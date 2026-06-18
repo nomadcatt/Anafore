@@ -42,6 +42,9 @@ export const brand = {
    */
   showSampleData: true,
 
+  /** How many of the questions a person must answer to submit. */
+  minAnswers: 2,
+
   /**
    * ┌─────────────────────────────────────────────────────────────────────┐
    * │  THE QUESTIONS / GAME STRUCTURE — edit this list to change the game.  │

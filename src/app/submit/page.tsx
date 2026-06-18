@@ -5,6 +5,7 @@ import Link from "next/link";
 import { brand } from "@/lib/brand";
 import { addSubmission, uploadPhoto } from "@/lib/submissions";
 import { resizeImage } from "@/lib/image";
+import SubmitQR from "@/components/SubmitQR";
 
 type Status = "idle" | "submitting" | "done" | "error";
 
@@ -34,15 +35,12 @@ export default function SubmitPage() {
       : Boolean(files[key]);
   }
 
-  const includedCount = brand.clues.filter((c) => included[c.key]).length;
   const filledCount = brand.clues.filter((c) => isFilled(c.key, c.type)).length;
+  const minAnswers = brand.minAnswers;
 
-  // Ready when: a name is given, at least one clue is included, and every
-  // included clue actually has content.
-  const ready =
-    name.trim().length > 0 &&
-    includedCount >= 1 &&
-    brand.clues.every((c) => !included[c.key] || isFilled(c.key, c.type));
+  // Ready when there's a name and at least the required number of answers.
+  // Anything left blank is simply skipped.
+  const ready = name.trim().length > 0 && filledCount >= minAnswers;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,7 +50,7 @@ export default function SubmitPage() {
     try {
       const clues: Record<string, string> = {};
       for (const clue of brand.clues) {
-        if (!included[clue.key]) continue; // skip clues they opted out of
+        if (!isFilled(clue.key, clue.type)) continue; // skip blank/opted-out
         if (clue.type === "text") {
           clues[clue.key] = texts[clue.key].trim();
         } else {
@@ -91,12 +89,23 @@ export default function SubmitPage() {
 
   return (
     <div className="mx-auto max-w-xl px-5 py-10">
-      <h1 className="text-3xl font-bold tracking-tight">Submit your clues</h1>
-      <p className="mt-2 text-brand-muted">
-        Your name stays hidden during the game — coworkers guess it from your
-        clues. Pick anywhere from one to four; the more you add, the trickier
-        the guess!
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Submit your clues
+          </h1>
+          <p className="mt-2 text-brand-muted">
+            Your name stays hidden during the game — coworkers guess it from your
+            clues. Answer at least {minAnswers} of the {brand.clues.length}{" "}
+            questions; the more you add, the trickier the guess!
+          </p>
+        </div>
+        {/* Compact QR on the side — scan to finish on your phone (where your
+            photos live). Hidden on small screens since you're already mobile. */}
+        <div className="hidden shrink-0 sm:block">
+          <SubmitQR path="/submit" size={84} compact caption="📱 Open on phone" />
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
         {/* Name */}
@@ -191,10 +200,12 @@ export default function SubmitPage() {
 
         <div className="flex items-center justify-between text-sm text-brand-muted">
           <span>
-            {filledCount} of {brand.clues.length} clues ready
+            {filledCount} of {brand.clues.length} answered
           </span>
-          {includedCount === 0 && (
-            <span className="text-brand-accent">Include at least one clue</span>
+          {filledCount < minAnswers && (
+            <span className="text-brand-accent">
+              Answer at least {minAnswers} to submit
+            </span>
           )}
         </div>
 
