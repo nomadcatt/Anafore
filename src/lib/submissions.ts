@@ -27,9 +27,11 @@ const DEMO_SEED: Submission[] = [
     createdAt: new Date().toISOString(),
     clues: {
       desk: "https://picsum.photos/seed/desk1/800/600",
+      travel: "https://picsum.photos/seed/travel1/800/600",
+      fashion: "Cozy minimalist neutrals",
+      talent: "Learning the ukulele",
       quote: "Stay hungry, stay foolish.",
       album: "https://picsum.photos/seed/album1/600/600",
-      travel: "https://picsum.photos/seed/travel1/800/600",
     },
   },
   {
@@ -38,9 +40,11 @@ const DEMO_SEED: Submission[] = [
     createdAt: new Date().toISOString(),
     clues: {
       desk: "https://picsum.photos/seed/desk2/800/600",
+      travel: "https://picsum.photos/seed/travel2/800/600",
+      fashion: "Bold colors and patterns",
+      talent: "Pottery on weekends",
       quote: "The best way out is always through.",
       album: "https://picsum.photos/seed/album2/600/600",
-      travel: "https://picsum.photos/seed/travel2/800/600",
     },
   },
   {
@@ -49,9 +53,11 @@ const DEMO_SEED: Submission[] = [
     createdAt: new Date().toISOString(),
     clues: {
       desk: "https://picsum.photos/seed/desk3/800/600",
+      travel: "https://picsum.photos/seed/travel3/800/600",
+      fashion: "Classic denim and tees",
+      talent: "Training for a 10K",
       quote: "Do small things with great love.",
       album: "https://picsum.photos/seed/album3/600/600",
-      travel: "https://picsum.photos/seed/travel3/800/600",
     },
   },
 ];

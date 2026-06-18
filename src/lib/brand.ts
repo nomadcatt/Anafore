@@ -62,9 +62,11 @@ export const brand = {
    */
   clues: [
     { key: "desk", type: "image", label: "Their desk", emoji: "🖥️", prompt: "A photo of your desk / workspace" },
+    { key: "travel", type: "image", label: "Favorite travel spot", emoji: "✈️", prompt: "A fun travel photo from somewhere you've been" },
+    { key: "fashion", type: "text", label: "Fashion style", emoji: "👗", prompt: "Describe your fashion style in 5 words or less" },
+    { key: "talent", type: "text", label: "Newest talent / hobby", emoji: "✨", prompt: "What is your newest talent or hobby?" },
     { key: "quote", type: "text", label: "Favorite quote", emoji: "💬", prompt: "Your favorite quote" },
     { key: "album", type: "image", label: "Favorite album", emoji: "🎵", prompt: "A photo of your favorite music album cover" },
-    { key: "travel", type: "image", label: "Favorite travel spot", emoji: "✈️", prompt: "A fun travel photo from somewhere you've been" },
   ] as const,
 };
 
