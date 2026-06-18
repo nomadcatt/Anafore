@@ -59,18 +59,51 @@ export default function Home() {
         </div>
       )}
 
-      {/* What you'll submit */}
-      <div className="mt-12 grid gap-4 sm:grid-cols-2">
-        {cfg.clues.map((clue) => (
-          <div key={clue.key} className="card flex items-center gap-4 p-5">
-            <div className="text-3xl">{clue.emoji}</div>
-            <div>
-              <div className="font-semibold">{clue.label}</div>
-              <div className="text-sm text-brand-muted">{clue.prompt}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* What you'll submit — a clearly-labeled preview of the prompts */}
+      <section className="mt-12">
+        <div className="text-center">
+          <span className="inline-block rounded-full bg-brand-tint px-3 py-1 text-xs font-semibold uppercase tracking-widest text-brand-accent">
+            Preview
+          </span>
+          <h2 className="mt-3 text-2xl font-bold tracking-tight">
+            The prompts you&apos;ll answer
+          </h2>
+          <p className="mx-auto mt-2 max-w-xl text-brand-muted">
+            Here&apos;s a sneak peek at the {cfg.clues.length} prompts. When you
+            submit, answer any{" "}
+            <strong className="text-brand-ink">{cfg.minAnswers} or more</strong>{" "}
+            — your answers become the clues the room tries to match to you.
+          </p>
+        </div>
+
+        <ol className="mt-6 grid gap-4 sm:grid-cols-2">
+          {cfg.clues.map((clue, i) => (
+            <li key={clue.key} className="card flex items-center gap-4 p-5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-tint text-xl">
+                {clue.emoji}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-brand-muted">
+                    Prompt {i + 1}
+                  </span>
+                </div>
+                <div className="font-semibold">{clue.label}</div>
+                <div className="text-sm text-brand-muted">{clue.prompt}</div>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-8 text-center">
+          <Link
+            href="/submit"
+            className="btn-primary inline-block rounded-full px-8 py-3.5 text-lg font-semibold"
+          >
+            Submit my clues
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
