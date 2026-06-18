@@ -67,12 +67,6 @@ export default function Home() {
           <h2 className="mt-3 text-2xl font-bold tracking-tight">
             The prompts you&apos;ll answer
           </h2>
-          <p className="mx-auto mt-2 max-w-xl text-brand-muted">
-            Here&apos;s a sneak peek at the {cfg.clues.length} prompts. When you
-            submit, answer any{" "}
-            <strong className="text-brand-ink">{cfg.minAnswers} or more</strong>{" "}
-            — your answers become the clues the room tries to match to you.
-          </p>
         </div>
 
         <ol className="mt-6 grid gap-4 sm:grid-cols-2">
