@@ -74,6 +74,27 @@ drop policy if exists "change vote" on votes;
 create policy "change vote" on votes
   for update to anon using (true);
 
+-- 4b) Editable app config (questions, min answers, title, tagline) -----------
+create table if not exists app_config (
+  id int primary key,
+  config jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+insert into app_config (id) values (1) on conflict (id) do nothing;
+alter table app_config enable row level security;
+
+drop policy if exists "read config" on app_config;
+create policy "read config" on app_config
+  for select to anon using (true);
+
+drop policy if exists "insert config" on app_config;
+create policy "insert config" on app_config
+  for insert to anon with check (true);
+
+drop policy if exists "update config" on app_config;
+create policy "update config" on app_config
+  for update to anon using (true);
+
 -- 5) Turn on realtime so the screen + phones update instantly ----------------
 do $$
 begin

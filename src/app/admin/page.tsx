@@ -1,23 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { brand } from "@/lib/brand";
+import { useConfig } from "@/lib/config";
 import {
   clearSubmissions,
   getSubmissions,
   Submission,
 } from "@/lib/submissions";
+import SettingsEditor from "@/components/SettingsEditor";
 
 // Light, casual gate so a stray click on /admin doesn't spoil the answers.
 // Set NEXT_PUBLIC_ADMIN_CODE in your env to change it (default: "reveal").
 const ADMIN_CODE = process.env.NEXT_PUBLIC_ADMIN_CODE || "reveal";
 
 export default function AdminPage() {
+  const cfg = useConfig();
   const [unlocked, setUnlocked] = useState(false);
   const [code, setCode] = useState("");
   const [subs, setSubs] = useState<Submission[] | null>(null);
   const [error, setError] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   function load() {
     getSubmissions()
@@ -90,6 +93,24 @@ export default function AdminPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-10">
+      {/* Questions & settings editor (collapsible) */}
+      <div className="card mb-8 p-5">
+        <button
+          onClick={() => setShowEditor((s) => !s)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <span className="text-lg font-bold">✏️ Questions &amp; settings</span>
+          <span className="text-sm text-brand-muted">
+            {showEditor ? "Hide ▲" : "Edit ▼"}
+          </span>
+        </button>
+        {showEditor && (
+          <div className="mt-5 border-t border-brand-border pt-5">
+            <SettingsEditor />
+          </div>
+        )}
+      </div>
+
       <div className="flex items-baseline justify-between">
         <h1 className="text-3xl font-bold">All submissions</h1>
         <span className="text-brand-muted">{subs?.length ?? 0} total</span>
@@ -101,7 +122,7 @@ export default function AdminPage() {
           <div key={s.id} className="card p-5">
             <div className="text-lg font-bold">{s.name}</div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {brand.clues.map((clue) => {
+              {cfg.clues.map((clue) => {
                 const v = s.clues[clue.key] ?? "";
                 const skipped = v === "";
                 return (

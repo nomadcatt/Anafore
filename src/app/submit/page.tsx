@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { brand } from "@/lib/brand";
+import { useConfig } from "@/lib/config";
 import { addSubmission, uploadPhoto } from "@/lib/submissions";
 import { resizeImage } from "@/lib/image";
 import SubmitQR from "@/components/SubmitQR";
@@ -10,16 +10,17 @@ import SubmitQR from "@/components/SubmitQR";
 type Status = "idle" | "submitting" | "done" | "error";
 
 export default function SubmitPage() {
+  const cfg = useConfig();
   const [name, setName] = useState("");
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<Record<string, File>>({});
   const [previews, setPreviews] = useState<Record<string, string>>({});
-  // Which clues the person chooses to include — all on by default.
-  const [included, setIncluded] = useState<Record<string, boolean>>(
-    Object.fromEntries(brand.clues.map((c) => [c.key, true]))
-  );
+  // Clues are active by default; unchecking sets the key to false.
+  const [included, setIncluded] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+
+  const isOn = (key: string) => included[key] !== false;
 
   function handleFile(key: string, file: File | undefined) {
     if (!file) return;
@@ -27,16 +28,16 @@ export default function SubmitPage() {
     setPreviews((p) => ({ ...p, [key]: URL.createObjectURL(file) }));
   }
 
-  // A clue counts as "filled" only if it's included AND has content.
+  // A clue counts as "filled" only if it's active AND has content.
   function isFilled(key: string, type: string) {
-    if (!included[key]) return false;
+    if (!isOn(key)) return false;
     return type === "text"
       ? (texts[key] ?? "").trim().length > 0
       : Boolean(files[key]);
   }
 
-  const filledCount = brand.clues.filter((c) => isFilled(c.key, c.type)).length;
-  const minAnswers = brand.minAnswers;
+  const filledCount = cfg.clues.filter((c) => isFilled(c.key, c.type)).length;
+  const minAnswers = cfg.minAnswers;
 
   // Ready when there's a name and at least the required number of answers.
   // Anything left blank is simply skipped.
@@ -49,7 +50,7 @@ export default function SubmitPage() {
     setError("");
     try {
       const clues: Record<string, string> = {};
-      for (const clue of brand.clues) {
+      for (const clue of cfg.clues) {
         if (!isFilled(clue.key, clue.type)) continue; // skip blank/opted-out
         if (clue.type === "text") {
           clues[clue.key] = texts[clue.key].trim();
@@ -96,7 +97,7 @@ export default function SubmitPage() {
           </h1>
           <p className="mt-2 text-brand-muted">
             Your name stays hidden during the game — coworkers guess it from your
-            clues. Answer at least {minAnswers} of the {brand.clues.length}{" "}
+            clues. Answer at least {minAnswers} of the {cfg.clues.length}{" "}
             questions; the more you add, the trickier the guess!
           </p>
         </div>
@@ -125,9 +126,9 @@ export default function SubmitPage() {
           />
         </div>
 
-        {/* Each clue, in the order defined in brand.ts. Each is optional. */}
-        {brand.clues.map((clue) => {
-          const on = included[clue.key];
+        {/* Each clue — all optional, active by default. */}
+        {cfg.clues.map((clue) => {
+          const on = isOn(clue.key);
           return (
             <div
               key={clue.key}
@@ -138,7 +139,6 @@ export default function SubmitPage() {
                   <span className="mr-1">{clue.emoji}</span>
                   {clue.prompt}
                 </label>
-                {/* Include / skip toggle */}
                 <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-brand-muted">
                   <input
                     type="checkbox"
@@ -200,7 +200,7 @@ export default function SubmitPage() {
 
         <div className="flex items-center justify-between text-sm text-brand-muted">
           <span>
-            {filledCount} of {brand.clues.length} answered
+            {filledCount} of {cfg.clues.length} answered
           </span>
           {filledCount < minAnswers && (
             <span className="text-brand-accent">

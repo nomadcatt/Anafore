@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { brand } from "@/lib/brand";
+import { useConfig } from "@/lib/config";
 import { getSubmissions, Submission } from "@/lib/submissions";
 import { onVotes, setGameState, Tally } from "@/lib/live";
 import SubmitQR from "@/components/SubmitQR";
@@ -17,6 +17,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function PlayPage() {
+  const cfg = useConfig();
   const [subs, setSubs] = useState<Submission[] | null>(null);
   const [error, setError] = useState("");
   const [idx, setIdx] = useState(0);
@@ -152,7 +153,7 @@ export default function PlayPage() {
 
       {/* Clue grid — only the clues this person chose to submit */}
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {brand.clues
+        {cfg.clues
           .filter((clue) => (current?.clues[clue.key] ?? "") !== "")
           .map((clue) => {
             const value = current!.clues[clue.key];

@@ -23,5 +23,7 @@ export const SUBMISSIONS_TABLE = "submissions";
 // Live-voting tables (used by the realtime guessing game).
 export const GAME_STATE_TABLE = "game_state";
 export const VOTES_TABLE = "votes";
+export const CONFIG_TABLE = "app_config";
+export const CONFIG_ID = 1;
 // Single fixed row id for the shared game state.
 export const GAME_STATE_ID = 1;
