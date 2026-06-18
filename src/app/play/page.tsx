@@ -147,7 +147,7 @@ export default function PlayPage() {
           </div>
         </div>
         <div className="hidden shrink-0 sm:block">
-          <SubmitQR path="/vote" size={92} compact caption="📱 Scan to vote" />
+          <SubmitQR path="/vote" size={150} compact caption="📱 Scan to vote" />
         </div>
       </div>
 
