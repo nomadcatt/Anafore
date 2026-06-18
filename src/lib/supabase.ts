@@ -1,10 +1,18 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// These come from your Supabase project (Settings → API) and live in
-// `.env.local` (see `.env.local.example`). If they're missing, the app
-// automatically runs in local "demo mode" using your browser's storage.
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// These come from your Supabase project (Settings → API) and normally live in
+// `.env.local` (see `.env.local.example`). We also ship them as public
+// fallbacks below so the deployed site connects to Supabase even if the Vercel
+// env vars aren't set — env vars still take precedence when present.
+//
+// The publishable (anon) key is safe to expose publicly: it only allows what
+// the database's Row Level Security policies permit. Do NOT put the service
+// role / secret key here.
+const FALLBACK_SUPABASE_URL = "https://xsebcngyjhkfjxqwjhbl.supabase.co";
+const FALLBACK_SUPABASE_ANON_KEY = "sb_publishable_TztHBIygVYeb8rIZ20UM0A_VO0371yn";
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
