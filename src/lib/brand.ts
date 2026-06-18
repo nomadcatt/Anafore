@@ -15,7 +15,7 @@ export const brand = {
   gameTitle: "Guess Who?",
 
   /** A short, fun subtitle for the landing page. */
-  tagline: "Four clues. One mystery coworker. Can you guess who?",
+  tagline: "Six clues. One mystery coworker. Can you guess who?",
 
   /**
    * Path to your logo, relative to the `public/` folder.
