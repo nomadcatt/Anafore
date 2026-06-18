@@ -56,9 +56,9 @@ it is, votes show live, then the host reveals — with a celebratory winner mome
 Participants must answer **at least 2**.
 
 ## How to make common changes
-- **Questions / wording / how-it-works / min answers** → edit live in **`/admin` → ✏️ Questions & settings** (saves to Supabase, no redeploy). Defaults live in `brand.ts`.
-- **Colors / logo / company name** → `src/lib/brand.ts` + `src/app/globals.css`, then commit/push (redeploys).
-- **Reset for a new round** → `/admin` → "Clear all submissions" (needs delete policies — see below).
+- **Questions / wording / how-it-works / min answers / company name / submit-page heading + intro** → edit live in **`/admin` → ✏️ Questions & settings** (saves to Supabase, no redeploy). Defaults live in `brand.ts`.
+- **Colors / logo / header wordmark / footer / tab title** → `src/lib/brand.ts` + `src/app/globals.css`, then commit/push (redeploys). (The home/`/vote` "___ all-hands" eyebrow uses the editable company name; the logo wordmark + footer + tab title still read from `brand.ts`.)
+- **Reset for a new round** → `/admin` → "Reset the game": **Clear all votes** (replay same submissions) or **Clear all submissions** (people resubmit). Both need delete policies — see below.
 
 ## Database setup state (done in Supabase)
 Run via `supabase-setup.sql` / snippets:
@@ -69,23 +69,15 @@ Run via `supabase-setup.sql` / snippets:
 
 ---
 
-## ✅ Resolved — voting now works on phones (2026-06-18)
-The "demo mode" voting problem is **fixed**. Added the **public** Supabase URL +
-publishable (anon) key as **fallback constants** in `src/lib/supabase.ts` (env
-vars still take precedence). The live site now connects to Supabase regardless
-of Vercel's env-var config, so phones can vote together. Confirmed working on
-phones.
+## ✅ Resolved (2026-06-18)
+- **Voting works on phones.** Added the **public** Supabase URL + publishable
+  (anon) key as **fallback constants** in `src/lib/supabase.ts` (env vars still
+  take precedence), so the live site connects to Supabase regardless of Vercel's
+  env-var config. Confirmed working.
+- **Live tally on `/play` updates in real time.** The earlier realtime-sync
+  issue is fixed — vote bars now move as votes come in. Confirmed working.
 
-## ⚠️ Outstanding issue (as of 2026-06-18)
-**The presenter `/play` screen isn't updating the live vote tally in real time.**
-Phones can vote fine, but the bars on `/play` don't move as votes come in.
-- Suspected area: the Supabase Realtime subscription in `onVotes()` in
-  `src/lib/live.ts` (the `postgres_changes` channel filtered by
-  `submission_id`). Likely the `votes` table isn't in the Realtime publication,
-  or the filtered subscription isn't firing → `refetch()` never runs.
-- Not yet diagnosed/fixed. Next step: check that `votes` (and `game_state`) are
-  added to the `supabase_realtime` publication in Supabase, and that the channel
-  subscribe status is `SUBSCRIBED`.
+**No known outstanding issues.**
 
 ---
 
@@ -110,3 +102,11 @@ Phones can vote fine, but the bars on `/play` don't move as votes come in.
 - **Home page redesign:** moved the QR code to the **side of the game title** (compact variant, "📱 Scan to submit") so it takes less vertical space; moved the **How it works** group up into the space directly below the title; clue grid follows.
 - Noted local dev convention: run this game on **port 3001** (`npm run dev -- -p 3001`); port 3000 is Nicole's other project (Dossier Desk).
 - **New open issue:** the `/play` presenter screen isn't updating the live vote tally in real time (see Outstanding issue) — likely a Supabase Realtime publication / subscription issue in `live.ts`.
+
+### 2026-06-18 — Live tally fix, UX polish, editable text, resets, correctness
+- **Fixed the live `/play` tally** — votes now update on the presenter screen in real time (realtime sync resolved). Confirmed working.
+- **Home page:** framed the clue grid as a labeled **"Preview" → "The prompts you'll answer"** section (numbered cards, emoji chips, Submit CTA); later removed the explanatory subtext under that heading per request.
+- **Submit form simplified:** removed the per-clue **"Include" checkbox**. A prompt now counts as soon as it has content; the Submit button **auto-unlocks at `minAnswers`**. Each card shows **"Optional" / "✓ Answered"**; intro copy encourages filling in as many as you like (blanks are skipped).
+- **More editable text in `/admin`:** added **company name** (the "Anafore" word in "___ all-hands" on home + `/vote`), **submit-page heading**, and **submit-page intro** to `AppConfig` (defaults in `brand.ts`, edited via `SettingsEditor`). Note: header logo wordmark + footer + tab title still come from `brand.ts`.
+- **Two reset options in `/admin` "Reset the game":** (1) **Clear all votes** — `clearVotes()` in `live.ts` wipes votes + resets game state to replay with the **same submissions**; (2) **Clear all submissions** — existing `clearSubmissions()` so people resubmit. (An earlier "factory reset" idea was removed in favor of these two.)
+- **Correctness on phones:** on reveal, each phone fetches the answer (`getSubmissionName()`) and shows a **🎉 correct / 😅 wrong / 👀 didn't-vote** moment instead of just the pick. Answer is only fetched after reveal, so it stays secret.
