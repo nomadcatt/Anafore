@@ -15,6 +15,7 @@ it is, votes show live, then the host reveals — with a celebratory winner mome
 | Thing | Value |
 |------|-------|
 | Local project folder | `/Users/nicoleemmalow/all-hands-game` |
+| Local dev URL | **http://localhost:3001** (`npm run dev -- -p 3001`) — port 3000 is Nicole's *other* project (Dossier Desk), so always run this game on **3001** to avoid confusion |
 | GitHub repo | https://github.com/nomadcatt/Anafore |
 | Live site (Vercel) | https://anafore.vercel.app |
 | Supabase project URL | `https://xsebcngyjhkfjxqwjhbl.supabase.co` |
@@ -68,23 +69,23 @@ Run via `supabase-setup.sql` / snippets:
 
 ---
 
+## ✅ Resolved — voting now works on phones (2026-06-18)
+The "demo mode" voting problem is **fixed**. Added the **public** Supabase URL +
+publishable (anon) key as **fallback constants** in `src/lib/supabase.ts` (env
+vars still take precedence). The live site now connects to Supabase regardless
+of Vercel's env-var config, so phones can vote together. Confirmed working on
+phones.
+
 ## ⚠️ Outstanding issue (as of 2026-06-18)
-**Voting doesn't work on the live site** because **anafore.vercel.app is missing
-the Supabase env vars** (`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
-Without them the live site runs in offline "demo mode" where each phone is
-isolated, so votes never sync.
-
-- Confirmed: the Supabase URL is **not** baked into the deployed JavaScript.
-- Confirmed: deploys **do** reach the site (recent features + "Six clues" tagline are live), so the GitHub→Vercel pipeline works — the env vars specifically aren't in the build.
-- Likely cause: vars not saved in Vercel, saved under the wrong **name**, not enabled for **Production**, or no redeploy after saving. (`NEXT_PUBLIC_` vars are baked in **at build time** — must redeploy after adding.)
-
-### Recommended next step (not yet done)
-Add the **public** Supabase URL + publishable key as **fallback constants** in
-`src/lib/supabase.ts` (env vars still take precedence). The publishable/anon key
-is safe to ship publicly (RLS protects the data), so this makes the live site
-connect to Supabase **regardless** of Vercel env-var config — sidestepping the
-recurring problem. Then voting works everywhere. (Alternative: get the two env
-vars correctly saved in Vercel + redeploy without build cache.)
+**The presenter `/play` screen isn't updating the live vote tally in real time.**
+Phones can vote fine, but the bars on `/play` don't move as votes come in.
+- Suspected area: the Supabase Realtime subscription in `onVotes()` in
+  `src/lib/live.ts` (the `postgres_changes` channel filtered by
+  `submission_id`). Likely the `votes` table isn't in the Realtime publication,
+  or the filtered subscription isn't firing → `refetch()` never runs.
+- Not yet diagnosed/fixed. Next step: check that `votes` (and `game_state`) are
+  added to the `supabase_realtime` publication in Supabase, and that the channel
+  subscribe status is `SUBSCRIBED`.
 
 ---
 
@@ -103,3 +104,9 @@ vars correctly saved in Vercel + redeploy without build cache.)
 - Built an **in-admin editor** so questions / min-answers / title / tagline / how-it-works are editable without code (stored in Supabase `app_config`).
 - Fixed the **reset button** (added delete policies; it now also clears votes + resets game state).
 - **Diagnosed** the live voting problem: Vercel deployment is missing the Supabase env vars (demo mode). Forced a redeploy; still missing → env vars not reaching the build. Fix pending (see Outstanding issue above).
+
+### 2026-06-18 — Voting fix + home-page layout
+- **Fixed live voting:** added public Supabase URL + publishable key as fallback constants in `src/lib/supabase.ts` (env vars still win). Pushed → deployed. **Confirmed voting now works on phones.**
+- **Home page redesign:** moved the QR code to the **side of the game title** (compact variant, "📱 Scan to submit") so it takes less vertical space; moved the **How it works** group up into the space directly below the title; clue grid follows.
+- Noted local dev convention: run this game on **port 3001** (`npm run dev -- -p 3001`); port 3000 is Nicole's other project (Dossier Desk).
+- **New open issue:** the `/play` presenter screen isn't updating the live vote tally in real time (see Outstanding issue) — likely a Supabase Realtime publication / subscription issue in `live.ts`.
