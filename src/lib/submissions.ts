@@ -164,6 +164,25 @@ export async function getCandidateNames(): Promise<string[]> {
 }
 
 /**
+ * Returns the correct name for one submission id, or null if not found. Used by
+ * voters' phones to show whether they guessed right — only called after the
+ * host reveals, so it doesn't leak the answer early.
+ */
+export async function getSubmissionName(id: string): Promise<string | null> {
+  if (!id) return null;
+  if (!isSupabaseConfigured || !supabase) {
+    return readDemo().find((s) => s.id === id)?.name ?? null;
+  }
+  const { data, error } = await supabase
+    .from(SUBMISSIONS_TABLE)
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return null;
+  return (data?.name as string) ?? null;
+}
+
+/**
  * Clears ALL submissions, votes, and the live game state for a fresh round.
  * Used by the organizer's reset button.
  *

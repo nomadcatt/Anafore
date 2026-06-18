@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useConfig } from "@/lib/config";
-import { getCandidateNames } from "@/lib/submissions";
+import { getCandidateNames, getSubmissionName } from "@/lib/submissions";
 import { castVote, getVoterId, GameState, onGameState } from "@/lib/live";
 
 export default function VotePage() {
@@ -14,6 +14,7 @@ export default function VotePage() {
     revealed: false,
   });
   const [votedFor, setVotedFor] = useState<string | null>(null);
+  const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -32,6 +33,22 @@ export default function VotePage() {
   useEffect(() => {
     setVotedFor(null);
   }, [state.submissionId]);
+
+  // On reveal, fetch the correct name so we can tell this phone if it got it
+  // right. Only runs after the host reveals, so the answer stays secret.
+  useEffect(() => {
+    if (!state.revealed || !state.submissionId) {
+      setAnswer(null);
+      return;
+    }
+    let alive = true;
+    getSubmissionName(state.submissionId).then((n) => {
+      if (alive) setAnswer(n);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [state.revealed, state.submissionId]);
 
   async function vote(name: string) {
     if (!state.submissionId || !voterId) return;
@@ -60,15 +77,59 @@ export default function VotePage() {
 
   // ── Answer revealed ──
   if (state.revealed) {
+    const gotIt = answer !== null && votedFor !== null && votedFor === answer;
+
+    // While the answer is still loading, keep it simple.
+    if (answer === null) {
+      return (
+        <Shell>
+          <div className="text-4xl">👀</div>
+          <h1 className="mt-3 text-xl font-bold">Answer revealed!</h1>
+          <p className="mt-2 text-brand-muted">Check the big screen.</p>
+          {votedFor && (
+            <p className="mt-4 rounded-full bg-brand-tint px-4 py-2 text-sm font-medium">
+              You guessed: {votedFor}
+            </p>
+          )}
+        </Shell>
+      );
+    }
+
     return (
       <Shell>
-        <div className="text-4xl">👀</div>
-        <h1 className="mt-3 text-xl font-bold">Answer revealed!</h1>
-        <p className="mt-2 text-brand-muted">Check the big screen.</p>
-        {votedFor && (
-          <p className="mt-4 rounded-full bg-brand-tint px-4 py-2 text-sm font-medium">
-            You guessed: {votedFor}
-          </p>
+        {!votedFor ? (
+          // Didn't vote this round.
+          <>
+            <div className="text-5xl">👀</div>
+            <h1 className="mt-3 text-2xl font-bold">
+              It was {answer}!
+            </h1>
+            <p className="mt-2 text-brand-muted">
+              You sat this one out — jump in on the next mystery!
+            </p>
+          </>
+        ) : gotIt ? (
+          // Correct guess 🎉
+          <>
+            <div className="animate-[pulse_1.2s_ease-in-out_1] text-6xl">🎉</div>
+            <h1 className="mt-3 text-2xl font-black text-brand-primary">
+              You got it!
+            </h1>
+            <p className="mt-2 text-lg font-medium">It really was {answer}.</p>
+            <p className="mt-2 text-sm text-brand-muted">
+              Nice — you know your coworkers.
+            </p>
+          </>
+        ) : (
+          // Wrong guess
+          <>
+            <div className="text-5xl">😅</div>
+            <h1 className="mt-3 text-2xl font-bold">So close!</h1>
+            <p className="mt-2 text-lg font-medium">It was {answer}.</p>
+            <p className="mt-3 rounded-full bg-brand-tint px-4 py-2 text-sm font-medium">
+              You guessed: {votedFor}
+            </p>
+          </>
         )}
         <p className="mt-6 text-sm text-brand-muted">
           Waiting for the next mystery…
