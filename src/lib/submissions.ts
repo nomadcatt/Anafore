@@ -4,6 +4,9 @@ import {
   supabase,
   PHOTO_BUCKET,
   SUBMISSIONS_TABLE,
+  VOTES_TABLE,
+  GAME_STATE_TABLE,
+  GAME_STATE_ID,
 } from "./supabase";
 
 export type Submission = {
@@ -160,25 +163,56 @@ export async function getCandidateNames(): Promise<string[]> {
   return Array.from(new Set((data ?? []).map((r) => r.name as string)));
 }
 
-/** Deletes ALL submissions. Used by the organizer's reset button. */
+/**
+ * Clears ALL submissions, votes, and the live game state for a fresh round.
+ * Used by the organizer's reset button.
+ *
+ * Requires delete policies on the tables (see GAME-SETUP.md). Note: with row
+ * level security on but no delete policy, Supabase silently deletes nothing —
+ * so if the button seems to "do nothing", the delete policy is missing.
+ */
 export async function clearSubmissions(): Promise<void> {
   if (!isSupabaseConfigured || !supabase) {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(DEMO_KEY);
+      window.localStorage.removeItem("ahg.votes");
+      window.localStorage.removeItem("ahg.gameState");
     }
     return;
   }
-  // Requires a delete policy on the table (see GAME-SETUP.md). If you'd rather,
-  // you can instead reset from the Supabase dashboard with: truncate submissions;
-  const { error } = await supabase
+
+  // Delete every submission, and confirm rows actually came back (this catches
+  // the "no delete policy" silent-no-op case).
+  const { data, error } = await supabase
     .from(SUBMISSIONS_TABLE)
     .delete()
-    .not("id", "is", null);
+    .not("id", "is", null)
+    .select("id");
   if (error) {
     throw new Error(
       `Could not clear submissions: ${error.message}. You can also reset from the Supabase dashboard (SQL: truncate ${SUBMISSIONS_TABLE};).`
     );
   }
+  if (!data || data.length === 0) {
+    // Either there was nothing to delete, or the delete policy is missing.
+    const { count } = await supabase
+      .from(SUBMISSIONS_TABLE)
+      .select("id", { count: "exact", head: true });
+    if ((count ?? 0) > 0) {
+      throw new Error(
+        "Submissions still present — the database is missing a delete policy. Run the snippet in GAME-SETUP.md (section 2c) to enable resetting."
+      );
+    }
+  }
+
+  // Also clear votes and reset the live game so the next round starts clean.
+  await supabase.from(VOTES_TABLE).delete().not("voter_id", "is", null);
+  await supabase.from(GAME_STATE_TABLE).upsert({
+    id: GAME_STATE_ID,
+    submission_id: null,
+    revealed: false,
+    updated_at: new Date().toISOString(),
+  });
 }
 
 function fileToDataUrl(file: File): Promise<string> {

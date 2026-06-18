@@ -21,6 +21,10 @@ drop policy if exists "anyone can read" on submissions;
 create policy "anyone can read" on submissions
   for select to anon using (true);
 
+drop policy if exists "clear submissions" on submissions;
+create policy "clear submissions" on submissions
+  for delete to anon using (true);
+
 -- 2) Photo storage -----------------------------------------------------------
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', true)
@@ -73,6 +77,10 @@ create policy "cast votes" on votes
 drop policy if exists "change vote" on votes;
 create policy "change vote" on votes
   for update to anon using (true);
+
+drop policy if exists "clear votes" on votes;
+create policy "clear votes" on votes
+  for delete to anon using (true);
 
 -- 4b) Editable app config (questions, min answers, title, tagline) -----------
 create table if not exists app_config (

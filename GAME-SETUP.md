@@ -74,18 +74,20 @@ start a fresh round.
 - **Demo mode** (no Supabase yet): the button clears your browser's saved data
   instantly. To start with no sample people at all, set `showSampleData: false`
   in `src/lib/brand.ts`.
-- **Supabase mode:** the easiest reset is from the Supabase dashboard → **SQL
-  Editor** → run `truncate submissions;`. If you want the in-app button to work
-  in Supabase mode too, add a delete policy once:
+- **Supabase mode:** the in-app button needs **delete policies** (without them,
+  Supabase silently deletes nothing and the button appears to do nothing). Run
+  this once in the **SQL Editor**:
 
   ```sql
-  create policy "organizer can reset"
-    on submissions for delete to anon using (true);
+  drop policy if exists "clear submissions" on submissions;
+  create policy "clear submissions" on submissions for delete to anon using (true);
+
+  drop policy if exists "clear votes" on votes;
+  create policy "clear votes" on votes for delete to anon using (true);
   ```
 
-  (Only add this if you're comfortable that anyone with the app could trigger a
-  reset — fine for a casual internal game, but the dashboard `truncate` is the
-  safer option.)
+  (This lets anyone with the app trigger a reset — fine for a casual internal
+  game. Alternatively, reset from the dashboard with `truncate submissions, votes;`.)
 
 ## 3. Set up Supabase (free — stores real submissions & photos)
 
