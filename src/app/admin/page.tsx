@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { resetConfig, useConfig } from "@/lib/config";
+import { useConfig } from "@/lib/config";
 import {
   clearSubmissions,
   getSubmissions,
   Submission,
 } from "@/lib/submissions";
+import { clearVotes } from "@/lib/live";
 import SettingsEditor from "@/components/SettingsEditor";
 
 // Light, casual gate so a stray click on /admin doesn't spoil the answers.
@@ -20,7 +21,7 @@ export default function AdminPage() {
   const [subs, setSubs] = useState<Submission[] | null>(null);
   const [error, setError] = useState("");
   const [resetting, setResetting] = useState(false);
-  const [fullResetting, setFullResetting] = useState(false);
+  const [clearingVotes, setClearingVotes] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
 
   function load() {
@@ -53,21 +54,19 @@ export default function AdminPage() {
     }
   }
 
-  async function handleFullReset() {
+  async function handleClearVotes() {
     const ok = window.confirm(
-      "Reset the ENTIRE game from scratch?\n\nThis deletes every submission and vote AND restores the questions, titles, and all settings to their defaults. This cannot be undone."
+      "Clear all votes and reset the game so you can play again with the same submissions? This cannot be undone."
     );
     if (!ok) return;
-    setFullResetting(true);
+    setClearingVotes(true);
     setError("");
     try {
-      await clearSubmissions();
-      await resetConfig();
-      // Reload so the config hook and the settings editor pick up the defaults.
-      window.location.reload();
+      await clearVotes();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not reset the game.");
-      setFullResetting(false);
+      setError(e instanceof Error ? e.message : "Could not clear votes.");
+    } finally {
+      setClearingVotes(false);
     }
   }
 
@@ -174,45 +173,45 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Danger zone — two levels of reset */}
+      {/* Danger zone — two ways to reset */}
       <div className="mt-12 space-y-5 rounded-xl border border-red-200 bg-red-50/50 p-5">
         <h2 className="text-sm font-bold text-red-700">Reset the game</h2>
 
-        {/* Level 1: clear submissions, keep your questions & settings */}
+        {/* Option 1: clear votes only — replay with the same submissions */}
         <div>
+          <p className="text-sm font-semibold text-red-700">
+            Clear all votes
+          </p>
+          <p className="mt-1 text-sm text-red-700/80">
+            Wipes every vote and resets the live game so you can play again
+            fresh with the <strong>same submissions</strong>. Keeps everyone&apos;s
+            clues. This can&apos;t be undone.
+          </p>
+          <button
+            onClick={handleClearVotes}
+            disabled={resetting || clearingVotes}
+            className="mt-3 rounded-full border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+          >
+            {clearingVotes ? "Clearing…" : "Clear all votes"}
+          </button>
+        </div>
+
+        {/* Option 2: clear submissions — start over with new prompts */}
+        <div className="border-t border-red-200 pt-5">
           <p className="text-sm font-semibold text-red-700">
             Clear all submissions
           </p>
           <p className="mt-1 text-sm text-red-700/80">
-            Deletes every submission and vote so you can start a new round.
-            Keeps your questions, titles, and settings. This can&apos;t be
-            undone.
+            Deletes <strong>every submission</strong> (and its votes) so people
+            can submit new prompts from scratch. Keeps your questions and
+            settings. This can&apos;t be undone.
           </p>
           <button
             onClick={handleReset}
-            disabled={resetting || fullResetting}
-            className="mt-3 rounded-full border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-          >
-            {resetting ? "Clearing…" : "Clear all submissions"}
-          </button>
-        </div>
-
-        {/* Level 2: full factory reset, including questions & settings */}
-        <div className="border-t border-red-200 pt-5">
-          <p className="text-sm font-semibold text-red-700">
-            Reset everything from scratch
-          </p>
-          <p className="mt-1 text-sm text-red-700/80">
-            Does everything above <em>and</em> restores the questions, titles,
-            submit-page text, and all settings to their built-in defaults — a
-            clean factory reset. This can&apos;t be undone.
-          </p>
-          <button
-            onClick={handleFullReset}
-            disabled={resetting || fullResetting}
+            disabled={resetting || clearingVotes}
             className="mt-3 rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
           >
-            {fullResetting ? "Resetting…" : "Reset game from scratch"}
+            {resetting ? "Clearing…" : "Clear all submissions"}
           </button>
         </div>
       </div>

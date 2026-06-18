@@ -115,15 +115,6 @@ export async function saveConfig(config: AppConfig): Promise<void> {
 }
 
 /**
- * Resets all editable settings (questions, min-answers, titles, submit text,
- * how-it-works) back to the built-in defaults from brand.ts. Used by the
- * admin "reset from scratch" action.
- */
-export async function resetConfig(): Promise<void> {
-  await saveConfig(DEFAULT_CONFIG);
-}
-
-/**
  * React hook: returns the active config. Starts from the built-in defaults
  * (so there's never an empty flash), then loads any saved overrides.
  */

@@ -175,6 +175,34 @@ export function onGameState(cb: (s: GameState) => void): () => void {
   };
 }
 
+/**
+ * Clears every vote and resets the live game (no mystery on screen, not
+ * revealed) so you can replay with the SAME submissions. Does not touch
+ * submissions themselves.
+ */
+export async function clearVotes(): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(VOTES_KEY);
+      window.localStorage.setItem(STATE_KEY, JSON.stringify(DEFAULT_STATE));
+      postChannel()?.postMessage({ type: "state", state: DEFAULT_STATE });
+      postChannel()?.postMessage({ type: "vote", submissionId: "" });
+    }
+    return;
+  }
+  const { error } = await supabase
+    .from(VOTES_TABLE)
+    .delete()
+    .not("voter_id", "is", null);
+  if (error) throw new Error(`Could not clear votes: ${error.message}`);
+  await supabase.from(GAME_STATE_TABLE).upsert({
+    id: GAME_STATE_ID,
+    submission_id: null,
+    revealed: false,
+    updated_at: new Date().toISOString(),
+  });
+}
+
 /** Voter: cast (or change) this device's vote for the current mystery. */
 export async function castVote(
   submissionId: string,
