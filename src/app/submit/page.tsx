@@ -15,12 +15,8 @@ export default function SubmitPage() {
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<Record<string, File>>({});
   const [previews, setPreviews] = useState<Record<string, string>>({});
-  // Clues are active by default; unchecking sets the key to false.
-  const [included, setIncluded] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
-
-  const isOn = (key: string) => included[key] !== false;
 
   function handleFile(key: string, file: File | undefined) {
     if (!file) return;
@@ -28,9 +24,9 @@ export default function SubmitPage() {
     setPreviews((p) => ({ ...p, [key]: URL.createObjectURL(file) }));
   }
 
-  // A clue counts as "filled" only if it's active AND has content.
+  // A clue counts as "filled" simply when it has content — no opt-in needed.
+  // Anything left blank is automatically skipped on submit.
   function isFilled(key: string, type: string) {
-    if (!isOn(key)) return false;
     return type === "text"
       ? (texts[key] ?? "").trim().length > 0
       : Boolean(files[key]);
@@ -93,12 +89,10 @@ export default function SubmitPage() {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-bold tracking-tight">
-            Submit your clues
+            {cfg.submitTitle}
           </h1>
-          <p className="mt-2 text-brand-muted">
-            Your name stays hidden during the game — coworkers guess it from your
-            clues. Answer at least {minAnswers} of the {cfg.clues.length}{" "}
-            questions; the more you add, the trickier the guess!
+          <p className="mt-2 whitespace-pre-line text-brand-muted">
+            {cfg.submitIntro}
           </p>
         </div>
         {/* Compact QR on the side — scan to finish on your phone (where your
@@ -126,68 +120,59 @@ export default function SubmitPage() {
           />
         </div>
 
-        {/* Each clue — all optional, active by default. */}
+        {/* Each clue — all optional. Fill in any you want; blanks are skipped. */}
         {cfg.clues.map((clue) => {
-          const on = isOn(clue.key);
+          const filled = isFilled(clue.key, clue.type);
           return (
-            <div
-              key={clue.key}
-              className={"card p-5 transition " + (on ? "" : "opacity-60")}
-            >
+            <div key={clue.key} className="card p-5 transition">
               <div className="flex items-start justify-between gap-3">
                 <label className="block text-sm font-semibold">
                   <span className="mr-1">{clue.emoji}</span>
                   {clue.prompt}
                 </label>
-                <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-brand-muted">
-                  <input
-                    type="checkbox"
-                    checked={on}
-                    onChange={(e) =>
-                      setIncluded((inc) => ({
-                        ...inc,
-                        [clue.key]: e.target.checked,
-                      }))
-                    }
-                    className="h-4 w-4 accent-brand-primary"
-                  />
-                  Include
-                </label>
+                {filled ? (
+                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-tint px-2.5 py-1 text-xs font-semibold text-brand-accent">
+                    ✓ Answered
+                  </span>
+                ) : (
+                  <span className="shrink-0 text-xs font-medium text-brand-muted">
+                    Optional
+                  </span>
+                )}
               </div>
 
-              {on &&
-                (clue.type === "text" ? (
-                  <textarea
-                    value={texts[clue.key] ?? ""}
-                    onChange={(e) =>
-                      setTexts((t) => ({ ...t, [clue.key]: e.target.value }))
-                    }
-                    rows={3}
-                    placeholder="Type it here…"
-                    className="mt-3 w-full resize-none rounded-lg border border-brand-border bg-brand-bg px-4 py-2.5 outline-none focus:border-brand-primary"
-                  />
-                ) : (
-                  <label className="mt-3 flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-brand-border bg-brand-bg transition hover:border-brand-primary">
-                    {previews[clue.key] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={previews[clue.key]}
-                        alt="preview"
-                        className="max-h-60 w-full object-contain"
-                      />
-                    ) : (
-                      <span className="px-4 py-10 text-sm text-brand-muted">
-                        Tap to upload a photo 📷
-                      </span>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleFile(clue.key, e.target.files?.[0])}
+              {clue.type === "text" ? (
+                <textarea
+                  value={texts[clue.key] ?? ""}
+                  onChange={(e) =>
+                    setTexts((t) => ({ ...t, [clue.key]: e.target.value }))
+                  }
+                  rows={3}
+                  placeholder="Type it here…"
+                  className="mt-3 w-full resize-none rounded-lg border border-brand-border bg-brand-bg px-4 py-2.5 outline-none focus:border-brand-primary"
+                />
+              ) : (
+                <label className="mt-3 flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-brand-border bg-brand-bg transition hover:border-brand-primary">
+                  {previews[clue.key] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={previews[clue.key]}
+                      alt="preview"
+                      className="max-h-60 w-full object-contain"
                     />
-                  </label>
-                ))}
+                  ) : (
+                    <span className="px-4 py-10 text-sm text-brand-muted">
+                      Tap to upload a photo 📷
+                    </span>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFile(clue.key, e.target.files?.[0])}
+                  />
+                </label>
+              )}
             </div>
           );
         })}

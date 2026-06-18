@@ -27,16 +27,22 @@ export type Clue = {
 };
 
 export type AppConfig = {
+  companyName: string;
   gameTitle: string;
   tagline: string;
+  submitTitle: string;
+  submitIntro: string;
   minAnswers: number;
   clues: Clue[];
   howItWorks: string[];
 };
 
 export const DEFAULT_CONFIG: AppConfig = {
+  companyName: brand.companyName,
   gameTitle: brand.gameTitle,
   tagline: brand.tagline,
+  submitTitle: brand.submitTitle,
+  submitIntro: brand.submitIntro,
   minAnswers: brand.minAnswers,
   clues: brand.clues.map((c) => ({ ...c })) as Clue[],
   howItWorks: [...brand.howItWorks],
@@ -50,8 +56,11 @@ function normalize(partial: Partial<AppConfig> | null | undefined): AppConfig {
     ? c.clues
     : DEFAULT_CONFIG.clues;
   return {
+    companyName: c.companyName ?? DEFAULT_CONFIG.companyName,
     gameTitle: c.gameTitle ?? DEFAULT_CONFIG.gameTitle,
     tagline: c.tagline ?? DEFAULT_CONFIG.tagline,
+    submitTitle: c.submitTitle ?? DEFAULT_CONFIG.submitTitle,
+    submitIntro: c.submitIntro ?? DEFAULT_CONFIG.submitIntro,
     minAnswers:
       typeof c.minAnswers === "number" && c.minAnswers >= 1
         ? c.minAnswers

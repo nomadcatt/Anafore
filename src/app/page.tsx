@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { brand } from "@/lib/brand";
 import { useConfig } from "@/lib/config";
 import SubmitQR from "@/components/SubmitQR";
 
@@ -14,7 +13,7 @@ export default function Home() {
       <div className="flex flex-col items-center gap-8 text-center sm:flex-row sm:items-center sm:justify-between sm:gap-10 sm:text-left">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold uppercase tracking-widest text-brand-accent">
-            {brand.companyName} all-hands
+            {cfg.companyName} all-hands
           </p>
           <h1 className="mt-3 text-5xl font-black tracking-tight sm:text-6xl">
             {cfg.gameTitle}

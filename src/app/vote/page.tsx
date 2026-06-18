@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { brand } from "@/lib/brand";
+import { useConfig } from "@/lib/config";
 import { getCandidateNames } from "@/lib/submissions";
 import { castVote, getVoterId, GameState, onGameState } from "@/lib/live";
 
 export default function VotePage() {
+  const cfg = useConfig();
   const [voterId, setVoterId] = useState("");
   const [names, setNames] = useState<string[]>([]);
   const [state, setState] = useState<GameState>({
@@ -80,7 +81,7 @@ export default function VotePage() {
   return (
     <div className="mx-auto max-w-md px-5 py-8">
       <p className="text-center text-sm font-semibold uppercase tracking-widest text-brand-accent">
-        {brand.companyName}
+        {cfg.companyName}
       </p>
       <h1 className="mt-1 text-center text-2xl font-bold">Who is it?</h1>
       <p className="mt-1 text-center text-brand-muted">

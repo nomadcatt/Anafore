@@ -104,6 +104,16 @@ export default function SettingsEditor() {
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="text-xs font-semibold text-brand-muted">
+            Company name (shown as &ldquo;___ all-hands&rdquo; on the home page)
+          </span>
+          <input
+            value={draft.companyName}
+            onChange={(e) => update({ companyName: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-brand-border bg-brand-bg px-3 py-2 outline-none focus:border-brand-primary"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-semibold text-brand-muted">
             Game title
           </span>
           <input
@@ -133,6 +143,34 @@ export default function SettingsEditor() {
             value={draft.tagline}
             onChange={(e) => update({ tagline: e.target.value })}
             className="mt-1 w-full rounded-lg border border-brand-border bg-brand-bg px-3 py-2 outline-none focus:border-brand-primary"
+          />
+        </label>
+      </div>
+
+      {/* Submission page text */}
+      <div className="grid gap-3">
+        <div className="text-xs font-semibold text-brand-muted">
+          Submission page text
+        </div>
+        <label className="block">
+          <span className="text-xs font-semibold text-brand-muted">
+            Heading
+          </span>
+          <input
+            value={draft.submitTitle}
+            onChange={(e) => update({ submitTitle: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-brand-border bg-brand-bg px-3 py-2 outline-none focus:border-brand-primary"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-semibold text-brand-muted">
+            Intro paragraph
+          </span>
+          <textarea
+            value={draft.submitIntro}
+            onChange={(e) => update({ submitIntro: e.target.value })}
+            rows={4}
+            className="mt-1 w-full resize-none rounded-lg border border-brand-border bg-brand-bg px-3 py-2 text-sm outline-none focus:border-brand-primary"
           />
         </label>
       </div>

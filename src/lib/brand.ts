@@ -17,6 +17,13 @@ export const brand = {
   /** A short, fun subtitle for the landing page. */
   tagline: "Six clues. One mystery coworker. Can you guess who?",
 
+  /** Heading at the top of the submission page (editable in /admin). */
+  submitTitle: "Submit your clues",
+
+  /** Intro paragraph on the submission page (editable in /admin). */
+  submitIntro:
+    "Your name stays hidden during the game — coworkers guess it from your clues. Just start typing or adding photos: answer a few of the prompts and the Submit button unlocks. Fill in as many as you like — the more you add, the trickier the guess! Any you leave blank are simply skipped.",
+
   /**
    * Path to your logo, relative to the `public/` folder.
    * Example: put `logo.png` in `public/` and set this to "/logo.png".
