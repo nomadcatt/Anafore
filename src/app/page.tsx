@@ -63,15 +63,18 @@ export default function Home() {
       </div>
 
       {/* How it works */}
-      <div className="mt-12 card p-6 text-center">
-        <h2 className="text-lg font-bold">How it works</h2>
-        <ol className="mx-auto mt-3 max-w-md space-y-1 text-left text-sm text-brand-muted">
-          <li>1. Everyone secretly submits their clues.</li>
-          <li>2. At the all-hands, we put the clues on the big screen.</li>
-          <li>3. The room votes on their phones for who they think it is.</li>
-          <li>4. Reveal the answer — and see who knows their coworkers best.</li>
-        </ol>
-      </div>
+      {cfg.howItWorks.length > 0 && (
+        <div className="mt-12 card p-6 text-center">
+          <h2 className="text-lg font-bold">How it works</h2>
+          <ol className="mx-auto mt-3 max-w-md space-y-1 text-left text-sm text-brand-muted">
+            {cfg.howItWorks.map((step, i) => (
+              <li key={i}>
+                {i + 1}. {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }

@@ -58,6 +58,19 @@ export default function SettingsEditor() {
     update({ clues });
   };
 
+  const updateStep = (i: number, val: string) =>
+    update({ howItWorks: draft.howItWorks.map((s, idx) => (idx === i ? val : s)) });
+  const addStep = () => update({ howItWorks: [...draft.howItWorks, ""] });
+  const removeStep = (i: number) =>
+    update({ howItWorks: draft.howItWorks.filter((_, idx) => idx !== i) });
+  const moveStep = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= draft.howItWorks.length) return;
+    const steps = [...draft.howItWorks];
+    [steps[i], steps[j]] = [steps[j], steps[i]];
+    update({ howItWorks: steps });
+  };
+
   async function save() {
     // Basic validation
     if (draft!.clues.length === 0) {
@@ -198,6 +211,57 @@ export default function SettingsEditor() {
           className="mt-3 rounded-full border border-brand-border px-4 py-2 text-sm font-medium hover:border-brand-primary"
         >
           + Add question
+        </button>
+      </div>
+
+      {/* "How it works" steps (shown on the home page, numbered automatically) */}
+      <div>
+        <div className="mb-2 text-xs font-semibold text-brand-muted">
+          &ldquo;How it works&rdquo; steps ({draft.howItWorks.length})
+        </div>
+        <div className="space-y-2">
+          {draft.howItWorks.map((step, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-sm font-semibold text-brand-muted">
+                {i + 1}.
+              </span>
+              <input
+                value={step}
+                onChange={(e) => updateStep(i, e.target.value)}
+                placeholder="Describe this step…"
+                className="flex-1 rounded-lg border border-brand-border bg-brand-bg px-3 py-2 text-sm outline-none focus:border-brand-primary"
+              />
+              <button
+                onClick={() => moveStep(i, -1)}
+                disabled={i === 0}
+                className="rounded-lg border border-brand-border px-2 py-1.5 text-sm disabled:opacity-30"
+                title="Move up"
+              >
+                ↑
+              </button>
+              <button
+                onClick={() => moveStep(i, 1)}
+                disabled={i === draft.howItWorks.length - 1}
+                className="rounded-lg border border-brand-border px-2 py-1.5 text-sm disabled:opacity-30"
+                title="Move down"
+              >
+                ↓
+              </button>
+              <button
+                onClick={() => removeStep(i)}
+                className="rounded-lg border border-red-200 px-2 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                title="Delete step"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={addStep}
+          className="mt-3 rounded-full border border-brand-border px-4 py-2 text-sm font-medium hover:border-brand-primary"
+        >
+          + Add step
         </button>
       </div>
 

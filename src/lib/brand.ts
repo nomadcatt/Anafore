@@ -45,6 +45,14 @@ export const brand = {
   /** How many of the questions a person must answer to submit. */
   minAnswers: 2,
 
+  /** The "How it works" steps shown on the home page (numbered automatically). */
+  howItWorks: [
+    "Everyone secretly submits their clues.",
+    "At the all-hands, we put the clues on the big screen.",
+    "The room votes on their phones for who they think it is.",
+    "Reveal the answer — and see who knows their coworkers best.",
+  ],
+
   /**
    * ┌─────────────────────────────────────────────────────────────────────┐
    * │  THE QUESTIONS / GAME STRUCTURE — edit this list to change the game.  │

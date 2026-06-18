@@ -31,6 +31,7 @@ export type AppConfig = {
   tagline: string;
   minAnswers: number;
   clues: Clue[];
+  howItWorks: string[];
 };
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -38,6 +39,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   tagline: brand.tagline,
   minAnswers: brand.minAnswers,
   clues: brand.clues.map((c) => ({ ...c })) as Clue[],
+  howItWorks: [...brand.howItWorks],
 };
 
 const DEMO_KEY = "ahg.config";
@@ -61,6 +63,9 @@ function normalize(partial: Partial<AppConfig> | null | undefined): AppConfig {
       emoji: x.emoji ?? "",
       prompt: x.prompt ?? "",
     })),
+    howItWorks: Array.isArray(c.howItWorks)
+      ? c.howItWorks.filter((s): s is string => typeof s === "string")
+      : DEFAULT_CONFIG.howItWorks,
   };
 }
 
