@@ -86,6 +86,26 @@ Run via `supabase-setup.sql` / snippets:
 - **Winners finale shipped & migration run.** The two columns (`votes.voter_name`,
   `game_state.finished`) were added in Supabase; the finale was tested live and
   works. No outstanding DB actions.
+- **Game-day safeguards** (submissions lock + duplicate-name warning) pushed on
+  branch `game-day-safeguards` — **no migration needed**; merge to `main` to ship.
+
+## 🗓️ Running the game (day-of checklist)
+1. Collect everyone's submissions (share `/submit`).
+2. In `/admin` (code `reveal`): fix any **⚠️ duplicate names**, then click
+   **Close submissions** to lock the player list.
+3. Open `/play` on the big screen (open it a few min early to warm it up).
+4. Share `/vote`; players enter their name, then guess each mystery.
+5. Reveal each mystery → on the last one, hit **🏆 Finish & show winners**.
+6. To replay: `/admin` → **Clear all votes** (same people) or **Clear all
+   submissions** (start over).
+
+## 💡 Backlog / ideas (not built yet)
+- **Multiple saved games / events** (requested 2026-06-23): keep past games and
+  switch between them via a sidebar/tabs. Needs a "game/event" concept threaded
+  through `submissions`, `votes`, `game_state`, and `app_config` (today there's
+  exactly **one** of each — a single global game). See discussion in chat;
+  moderate refactor. Decide: fully independent games (own questions + people +
+  leaderboard) vs. shared questions; archive old games read-only?
 
 ---
 
