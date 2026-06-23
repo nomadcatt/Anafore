@@ -43,7 +43,8 @@ it is, votes show live, then the host reveals — with a celebratory winner mome
 - `src/lib/config.ts` — **editable** config (questions, min answers, title, tagline, how-it-works) stored in Supabase `app_config`; `useConfig()` hook + `getConfig`/`saveConfig`. brand.ts is the fallback/seed.
 - `src/lib/supabase.ts` — Supabase client (reads `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
 - `src/lib/submissions.ts` — submissions CRUD, `getCandidateNames`, `clearSubmissions` (also clears votes + resets game state). Demo fallback when Supabase unset.
-- `src/lib/live.ts` — live layer: game state + votes via Supabase Realtime, with a BroadcastChannel demo fallback for same-computer multi-tab preview.
+- `src/lib/live.ts` — live layer: game state (incl. `finished` finale flag) + votes (incl. `voter_name`) via Supabase Realtime, with a BroadcastChannel demo fallback for same-computer multi-tab preview. Also `getVoterName`/`setVoterName` and `getAllVotes`.
+- `src/lib/results.ts` — pure `computeResults(submissions, votes)` → end-of-game leaderboard (top guessers, with ranks/ties) + room stats (overall accuracy, easiest/trickiest mystery). Used by both `/play` and `/vote` at the finale.
 - `src/lib/image.ts` — client-side photo resize/compress before upload.
 - `src/components/SettingsEditor.tsx` — the in-admin questions/settings editor.
 - `src/components/SubmitQR.tsx` — reusable QR (compact + full variants).
@@ -81,7 +82,36 @@ Run via `supabase-setup.sql` / snippets:
 
 ---
 
+## ⚠️ Action needed before next playtest (2026-06-23)
+The new **winners finale** added two database columns. **Run this once** in the
+Supabase SQL Editor (or re-paste the whole `supabase-setup.sql`) — until you do,
+voting will fail because `castVote` writes `voter_name`:
+
+```sql
+alter table votes add column if not exists voter_name text;
+alter table game_state add column if not exists finished boolean not null default false;
+```
+
+---
+
 ## Session log
+
+### 2026-06-23 — Winners finale (end-of-game page)
+- **New end-of-game winner page.** After the last mystery is revealed, `/play`
+  shows a **🏆 Finish & show winners** button that ends the game and displays a
+  finale: a **top-guessers leaderboard** (medals, tie-aware ranks) + **room
+  stats** (overall accuracy, easiest-to-spot, trickiest mystery). A "Back to the
+  game" button returns to the round.
+- **Phones follow into the finale.** Added a `finished` flag to the shared
+  `game_state`; when the host finishes, every `/vote` phone switches to a
+  personal results screen ("You got X/Y right — you placed #N").
+- **Voters now enter a name** (one-time gate on `/vote`, stored per device) so
+  the leaderboard can crown real winners by name. Votes carry `voter_name`.
+- New `src/lib/results.ts` (`computeResults`); `getAllVotes` + name helpers in
+  `live.ts`; resets and `clearSubmissions` also clear the `finished` flag.
+- **DB migration required** — see "Action needed" above. `supabase-setup.sql`
+  updated (idempotent `add column if not exists` for both new columns).
+- Verified: `tsc --noEmit` clean, `next build` succeeds.
 
 ### 2026-06-18 — Initial build session
 - Scaffolded Next.js + Tailwind project; applied Anafore branding (pink `#FF0E8B`, logomark, name).

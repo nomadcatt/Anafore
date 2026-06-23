@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useConfig } from "@/lib/config";
 import { getSubmissions, Submission } from "@/lib/submissions";
-import { onVotes, setGameState, Tally } from "@/lib/live";
+import { getAllVotes, onVotes, setGameState, Tally } from "@/lib/live";
+import { computeResults, GameResults } from "@/lib/results";
 import SubmitQR from "@/components/SubmitQR";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -23,6 +24,8 @@ export default function PlayPage() {
   const [idx, setIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [tally, setTally] = useState<Tally>({});
+  const [finished, setFinished] = useState(false);
+  const [results, setResults] = useState<GameResults | null>(null);
 
   useEffect(() => {
     getSubmissions()
@@ -41,10 +44,28 @@ export default function PlayPage() {
   const total = subs?.length ?? 0;
   const current = subs?.[idx];
 
-  // Tell everyone's phones which mystery is current + whether it's revealed.
+  // Tell everyone's phones which mystery is current, whether it's revealed, and
+  // whether the game has wrapped up (so they follow us into the finale).
   useEffect(() => {
-    if (current?.id) setGameState({ submissionId: current.id, revealed });
-  }, [current?.id, revealed]);
+    if (current?.id)
+      setGameState({ submissionId: current.id, revealed, finished });
+  }, [current?.id, revealed, finished]);
+
+  // When the host ends the game, tally up the leaderboard + room stats.
+  useEffect(() => {
+    if (!finished || !subs) return;
+    let alive = true;
+    getAllVotes()
+      .then((votes) => {
+        if (alive) setResults(computeResults(subs, votes));
+      })
+      .catch(() => {
+        if (alive) setResults(computeResults(subs, []));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [finished, subs]);
 
   // Subscribe to the live vote tally for the current mystery.
   useEffect(() => {
@@ -78,7 +99,9 @@ export default function PlayPage() {
   );
 
   // Presenter keyboard shortcuts: ← → to navigate, space/enter to reveal.
+  // Disabled once we're on the winners finale.
   useEffect(() => {
+    if (finished) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowRight") go(1);
       else if (e.key === "ArrowLeft") go(-1);
@@ -89,7 +112,7 @@ export default function PlayPage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go]);
+  }, [go, finished]);
 
   if (error) {
     return (
@@ -126,6 +149,21 @@ export default function PlayPage() {
       </Centered>
     );
   }
+
+  // ── Winners finale (shown after the host ends the last mystery) ──
+  if (finished) {
+    return (
+      <Finale
+        results={results}
+        onBack={() => {
+          setResults(null);
+          setFinished(false);
+        }}
+      />
+    );
+  }
+
+  const isLast = idx === total - 1;
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-8">
@@ -276,13 +314,21 @@ export default function PlayPage() {
         >
           {revealed ? "Hide" : "Reveal"}
         </button>
-        <button
-          onClick={() => go(1)}
-          disabled={idx === total - 1}
-          className="rounded-full border border-brand-border px-5 py-2.5 font-medium transition hover:bg-brand-surface disabled:opacity-30"
-        >
-          Next →
-        </button>
+        {isLast ? (
+          <button
+            onClick={() => setFinished(true)}
+            className="btn-primary rounded-full px-6 py-2.5 font-semibold"
+          >
+            🏆 Finish & show winners
+          </button>
+        ) : (
+          <button
+            onClick={() => go(1)}
+            className="rounded-full border border-brand-border px-5 py-2.5 font-medium transition hover:bg-brand-surface"
+          >
+            Next →
+          </button>
+        )}
       </div>
       <p className="mt-4 text-center text-xs text-brand-muted">
         Tip: use ← → arrow keys to move and the spacebar to reveal. The room
@@ -296,6 +342,144 @@ function Centered({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-5">
       {children}
+    </div>
+  );
+}
+
+const MEDAL = ["🥇", "🥈", "🥉"];
+
+function Finale({
+  results,
+  onBack,
+}: {
+  results: GameResults | null;
+  onBack: () => void;
+}) {
+  if (!results) {
+    return (
+      <Centered>
+        <p className="text-brand-muted">Tallying the winners…</p>
+      </Centered>
+    );
+  }
+
+  const { leaderboard, accuracyPct, totalGuesses, easiest, trickiest } = results;
+  // Everyone tied with the top score is a "winner".
+  const topRank = leaderboard.length ? leaderboard[0].rank : 0;
+  const winners = leaderboard.filter((e) => e.rank === topRank);
+
+  return (
+    <div className="mx-auto max-w-3xl px-5 py-10">
+      <div className="text-center">
+        <div className="animate-[pulse_1.4s_ease-in-out_1] text-6xl">🏆</div>
+        <h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">
+          That&apos;s a wrap!
+        </h1>
+        {winners.length > 0 && winners[0].correct > 0 ? (
+          <p className="mt-3 text-xl font-semibold text-brand-primary sm:text-2xl">
+            {winners.length === 1
+              ? `🎉 ${winners[0].name} wins`
+              : `🎉 It's a tie — ${winners.map((w) => w.name).join(" & ")} win`}{" "}
+            with {winners[0].correct}/{winners[0].answered} right!
+          </p>
+        ) : (
+          <p className="mt-3 text-lg text-brand-muted">
+            Tough crowd — nobody got a clean run. Here&apos;s how the room did.
+          </p>
+        )}
+      </div>
+
+      {/* Leaderboard */}
+      {leaderboard.length > 0 ? (
+        <div className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-brand-muted">
+            Top guessers
+          </h2>
+          <div className="grid gap-2">
+            {leaderboard.slice(0, 10).map((e, i) => {
+              const isWinner = e.rank === topRank && e.correct > 0;
+              return (
+                <div
+                  key={e.voterId}
+                  className={
+                    "flex items-center justify-between rounded-xl border px-4 py-3 " +
+                    (isWinner
+                      ? "border-brand-primary bg-brand-tint ring-1 ring-brand-primary"
+                      : "border-brand-border")
+                  }
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-7 text-center text-lg font-bold tabular-nums">
+                      {MEDAL[e.rank - 1] ?? e.rank}
+                    </span>
+                    <span className="text-lg font-semibold">{e.name}</span>
+                  </div>
+                  <span className="text-sm font-medium text-brand-muted">
+                    {e.correct}/{e.answered} correct
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-8 text-center text-brand-muted">
+          No votes were cast this game.
+        </p>
+      )}
+
+      {/* Room stats */}
+      <div className="mt-8 grid gap-3 sm:grid-cols-3">
+        <Stat label="Room accuracy" value={`${accuracyPct}%`}
+          sub={`${totalGuesses} guess${totalGuesses === 1 ? "" : "es"} total`} />
+        <Stat
+          label="🧠 Easiest to spot"
+          value={easiest ? easiest.name : "—"}
+          sub={
+            easiest
+              ? `${Math.round((easiest.correct / easiest.total) * 100)}% got it`
+              : "no votes"
+          }
+        />
+        <Stat
+          label="🙈 Trickiest"
+          value={trickiest ? trickiest.name : "—"}
+          sub={
+            trickiest
+              ? `${Math.round((trickiest.correct / trickiest.total) * 100)}% got it`
+              : "no votes"
+          }
+        />
+      </div>
+
+      <div className="mt-10 text-center">
+        <button
+          onClick={onBack}
+          className="rounded-full border border-brand-border px-5 py-2.5 font-medium transition hover:bg-brand-surface"
+        >
+          ← Back to the game
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+}) {
+  return (
+    <div className="card px-4 py-4 text-center">
+      <div className="text-xs font-semibold uppercase tracking-wide text-brand-muted">
+        {label}
+      </div>
+      <div className="mt-1 truncate text-2xl font-black">{value}</div>
+      <div className="mt-0.5 text-xs text-brand-muted">{sub}</div>
     </div>
   );
 }

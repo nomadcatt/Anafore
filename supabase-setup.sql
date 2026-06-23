@@ -39,9 +39,12 @@ create table if not exists game_state (
   id int primary key,
   submission_id text,
   revealed boolean not null default false,
+  finished boolean not null default false,
   updated_at timestamptz not null default now()
 );
 insert into game_state (id) values (1) on conflict (id) do nothing;
+-- Add the finale flag to databases created before the winners page existed.
+alter table game_state add column if not exists finished boolean not null default false;
 alter table game_state enable row level security;
 
 drop policy if exists "read game state" on game_state;
@@ -61,9 +64,12 @@ create table if not exists votes (
   submission_id text not null,
   voter_id text not null,
   guess text not null,
+  voter_name text,
   created_at timestamptz not null default now(),
   primary key (submission_id, voter_id)
 );
+-- Add the voter's display name to databases created before the winners page.
+alter table votes add column if not exists voter_name text;
 alter table votes enable row level security;
 
 drop policy if exists "read votes" on votes;

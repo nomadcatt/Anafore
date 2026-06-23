@@ -230,6 +230,7 @@ export async function clearSubmissions(): Promise<void> {
     id: GAME_STATE_ID,
     submission_id: null,
     revealed: false,
+    finished: false,
     updated_at: new Date().toISOString(),
   });
 }

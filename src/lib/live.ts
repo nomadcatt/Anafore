@@ -23,11 +23,25 @@ export type GameState = {
   submissionId: string | null;
   /** Whether the answer has been revealed. */
   revealed: boolean;
+  /** When true, the game is over — everyone shows the winners finale. */
+  finished: boolean;
 };
 
 export type Tally = Record<string, number>; // guessed name -> vote count
 
-const DEFAULT_STATE: GameState = { submissionId: null, revealed: false };
+/** One vote, used to compute the end-of-game leaderboard + room stats. */
+export type VoteRecord = {
+  submissionId: string;
+  guess: string;
+  voterId: string;
+  voterName: string;
+};
+
+const DEFAULT_STATE: GameState = {
+  submissionId: null,
+  revealed: false,
+  finished: false,
+};
 
 // ─── A stable per-device voter id (so one phone = one vote per round) ────────
 export function getVoterId(): string {
@@ -41,6 +55,19 @@ export function getVoterId(): string {
   return id;
 }
 
+// ─── The player's display name (so the finale can crown winners by name) ─────
+const VOTER_NAME_KEY = "ahg.voterName";
+
+export function getVoterName(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(VOTER_NAME_KEY) ?? "";
+}
+
+export function setVoterName(name: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(VOTER_NAME_KEY, name.trim());
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // DEMO BACKEND (BroadcastChannel + localStorage)
 // ════════════════════════════════════════════════════════════════════════════
@@ -49,7 +76,12 @@ const CH_NAME = "ahg-live";
 const STATE_KEY = "ahg.gameState";
 const VOTES_KEY = "ahg.votes";
 
-type DemoVote = { submissionId: string; guess: string; voterId: string };
+type DemoVote = {
+  submissionId: string;
+  guess: string;
+  voterId: string;
+  voterName: string;
+};
 
 // A new channel per subscriber (closed on cleanup).
 function demoChannel(): BroadcastChannel | null {
@@ -113,6 +145,7 @@ export async function setGameState(state: GameState): Promise<void> {
     id: GAME_STATE_ID,
     submission_id: state.submissionId,
     revealed: state.revealed,
+    finished: state.finished,
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`Could not update game state: ${error.message}`);
@@ -141,7 +174,7 @@ export function onGameState(cb: (s: GameState) => void): () => void {
   // Supabase: fetch current, then listen for changes.
   const sb = supabase;
   sb.from(GAME_STATE_TABLE)
-    .select("submission_id, revealed")
+    .select("submission_id, revealed, finished")
     .eq("id", GAME_STATE_ID)
     .maybeSingle()
     .then(({ data }) => {
@@ -149,6 +182,7 @@ export function onGameState(cb: (s: GameState) => void): () => void {
         cb({
           submissionId: (data.submission_id as string) ?? null,
           revealed: Boolean(data.revealed),
+          finished: Boolean(data.finished),
         });
     });
 
@@ -161,10 +195,12 @@ export function onGameState(cb: (s: GameState) => void): () => void {
         const row = payload.new as {
           submission_id: string | null;
           revealed: boolean;
+          finished: boolean;
         };
         cb({
           submissionId: row.submission_id ?? null,
           revealed: Boolean(row.revealed),
+          finished: Boolean(row.finished),
         });
       }
     )
@@ -199,6 +235,7 @@ export async function clearVotes(): Promise<void> {
     id: GAME_STATE_ID,
     submission_id: null,
     revealed: false,
+    finished: false,
     updated_at: new Date().toISOString(),
   });
 }
@@ -207,14 +244,15 @@ export async function clearVotes(): Promise<void> {
 export async function castVote(
   submissionId: string,
   guess: string,
-  voterId: string
+  voterId: string,
+  voterName: string
 ): Promise<void> {
   if (!isSupabaseConfigured || !supabase) {
     if (typeof window === "undefined") return;
     const votes = readDemoVotes().filter(
       (v) => !(v.submissionId === submissionId && v.voterId === voterId)
     );
-    votes.push({ submissionId, guess, voterId });
+    votes.push({ submissionId, guess, voterId, voterName });
     window.localStorage.setItem(VOTES_KEY, JSON.stringify(votes));
     postChannel()?.postMessage({ type: "vote", submissionId });
     return;
@@ -222,10 +260,40 @@ export async function castVote(
   const { error } = await supabase
     .from(VOTES_TABLE)
     .upsert(
-      { submission_id: submissionId, guess, voter_id: voterId },
+      {
+        submission_id: submissionId,
+        guess,
+        voter_id: voterId,
+        voter_name: voterName,
+      },
       { onConflict: "submission_id,voter_id" }
     );
   if (error) throw new Error(`Could not record vote: ${error.message}`);
+}
+
+/**
+ * Returns every vote cast across the whole game. Used at the finale to build
+ * the leaderboard + room stats (combined with submissions to know the answers).
+ */
+export async function getAllVotes(): Promise<VoteRecord[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    return readDemoVotes().map((v) => ({
+      submissionId: v.submissionId,
+      guess: v.guess,
+      voterId: v.voterId,
+      voterName: v.voterName ?? "",
+    }));
+  }
+  const { data, error } = await supabase
+    .from(VOTES_TABLE)
+    .select("submission_id, guess, voter_id, voter_name");
+  if (error) throw new Error(`Could not load votes: ${error.message}`);
+  return (data ?? []).map((r) => ({
+    submissionId: String(r.submission_id),
+    guess: (r.guess as string) ?? "",
+    voterId: String(r.voter_id),
+    voterName: (r.voter_name as string) ?? "",
+  }));
 }
 
 /** Subscribe to the live vote tally for one mystery. Returns unsubscribe. */
