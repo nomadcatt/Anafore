@@ -82,19 +82,27 @@ Run via `supabase-setup.sql` / snippets:
 
 ---
 
-## ⚠️ Action needed before next playtest (2026-06-23)
-The new **winners finale** added two database columns. **Run this once** in the
-Supabase SQL Editor (or re-paste the whole `supabase-setup.sql`) — until you do,
-voting will fail because `castVote` writes `voter_name`:
-
-```sql
-alter table votes add column if not exists voter_name text;
-alter table game_state add column if not exists finished boolean not null default false;
-```
+## ✅ Resolved (2026-06-23)
+- **Winners finale shipped & migration run.** The two columns (`votes.voter_name`,
+  `game_state.finished`) were added in Supabase; the finale was tested live and
+  works. No outstanding DB actions.
 
 ---
 
 ## Session log
+
+### 2026-06-23 — Game-day safeguards (no DB migration)
+- **"Submissions open/closed" toggle in `/admin`.** New `submissionsOpen` flag on
+  `AppConfig` (lives in the existing `app_config` JSON — no schema change). When
+  closed, `/submit` shows a "Submissions are closed 🔒" screen and the submit
+  handler refuses to post. Toggle saves instantly. Use it to **lock the player
+  list before starting the game** (late submissions otherwise desync `/play` and
+  `/vote`, which load their lists once on mount).
+- **Duplicate-name warning in `/admin`.** Detects names shared by 2+ submissions
+  (case-insensitive): an amber banner up top + a "⚠️ duplicate name" badge on each
+  affected card. Duplicates are ambiguous to guess and skew the scoreboard, so the
+  organizer can rename (e.g. add a last initial) before play.
+- Verified: `tsc --noEmit` clean, `next build` succeeds. No Supabase changes.
 
 ### 2026-06-23 — Winners finale (end-of-game page)
 - **New end-of-game winner page.** After the last mystery is revealed, `/play`

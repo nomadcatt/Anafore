@@ -41,7 +41,7 @@ export default function SubmitPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!ready) return;
+    if (!ready || !cfg.submissionsOpen) return;
     setStatus("submitting");
     setError("");
     try {
@@ -72,6 +72,27 @@ export default function SubmitPage() {
           <p className="mt-2 text-brand-muted">
             You submitted {filledCount} clue{filledCount === 1 ? "" : "s"}. No
             peeking — see you at the all-hands!
+          </p>
+          <Link
+            href="/"
+            className="btn-primary mt-6 inline-block rounded-full px-5 py-2.5 font-medium"
+          >
+            Back to home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!cfg.submissionsOpen) {
+    return (
+      <div className="mx-auto max-w-xl px-5 py-16 text-center">
+        <div className="card p-10">
+          <div className="text-5xl">🔒</div>
+          <h1 className="mt-4 text-2xl font-bold">Submissions are closed</h1>
+          <p className="mt-2 text-brand-muted">
+            The game is underway — entries are locked. Head to the big screen and
+            get ready to guess!
           </p>
           <Link
             href="/"

@@ -35,6 +35,8 @@ export type AppConfig = {
   minAnswers: number;
   clues: Clue[];
   howItWorks: string[];
+  /** When false, the /submit form is locked (organizer closes it before play). */
+  submissionsOpen: boolean;
 };
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -46,6 +48,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   minAnswers: brand.minAnswers,
   clues: brand.clues.map((c) => ({ ...c })) as Clue[],
   howItWorks: [...brand.howItWorks],
+  submissionsOpen: true,
 };
 
 const DEMO_KEY = "ahg.config";
@@ -75,6 +78,9 @@ function normalize(partial: Partial<AppConfig> | null | undefined): AppConfig {
     howItWorks: Array.isArray(c.howItWorks)
       ? c.howItWorks.filter((s): s is string => typeof s === "string")
       : DEFAULT_CONFIG.howItWorks,
+    // Default to open so existing configs (saved before this flag) stay open.
+    submissionsOpen:
+      typeof c.submissionsOpen === "boolean" ? c.submissionsOpen : true,
   };
 }
 
