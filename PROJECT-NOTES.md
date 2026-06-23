@@ -82,19 +82,85 @@ Run via `supabase-setup.sql` / snippets:
 
 ---
 
-## ⚠️ Action needed before next playtest (2026-06-23)
-The new **winners finale** added two database columns. **Run this once** in the
-Supabase SQL Editor (or re-paste the whole `supabase-setup.sql`) — until you do,
-voting will fail because `castVote` writes `voter_name`:
+## ✅ Resolved (2026-06-23)
+- **Winners finale shipped & migration run.** The two columns (`votes.voter_name`,
+  `game_state.finished`) were added in Supabase; the finale was tested live and
+  works. No outstanding DB actions.
+- **Game-day safeguards** (submissions lock + duplicate-name warning) pushed on
+  branch `game-day-safeguards` — **no migration needed**; merge to `main` to ship.
 
-```sql
-alter table votes add column if not exists voter_name text;
-alter table game_state add column if not exists finished boolean not null default false;
-```
+## ⚠️ Action needed — edit-submissions migration (2026-06-23)
+- The **edit-your-submission** feature needs an **UPDATE policy** on the
+  `submissions` table (it currently only allows insert/select/delete). Until it's
+  run, saving an edit shows a clear error. Run once in the Supabase SQL editor
+  (also in `supabase-setup.sql`, idempotent):
+  ```sql
+  drop policy if exists "edit submissions" on submissions;
+  create policy "edit submissions" on submissions
+    for update to anon using (true) with check (true);
+  ```
+
+## 🗓️ Running the game (day-of checklist)
+1. Collect everyone's submissions (share `/submit`).
+2. In `/admin` (code `reveal`): fix any **⚠️ duplicate names**, then click
+   **Close submissions** to lock the player list.
+3. Open `/play` on the big screen (open it a few min early to warm it up).
+4. Share `/vote`; players enter their name, then guess each mystery.
+5. Reveal each mystery → on the last one, hit **🏆 Finish & show winners**.
+6. To replay: `/admin` → **Clear all votes** (same people) or **Clear all
+   submissions** (start over).
+
+## 💡 Backlog / ideas (not built yet)
+- **This repo is becoming "Anafore All Hands Games"** — a hub of activities.
+  Game 1: **Guess Who** (built, live). Game 2: **The A4 Awards** (designing).
+- **The A4 Awards** (Anafore All Hands Afterparty Awards) → design doc in
+  **`A4-AWARDS.md`**. 🎨 Designing now, needed ~July 2026. Peer-voted superlative
+  awards for the "afterparty"; values carried subtly by playful category names.
+- **More all-hands games** → see **`GAME-IDEAS.md`** for the full brainstormed
+  menu (peer-recognition + value-themed games).
+- **Multiple saved games / events** (requested 2026-06-23): keep past games and
+  switch between them via a sidebar/tabs. Needs a "game/event" concept threaded
+  through `submissions`, `votes`, `game_state`, and `app_config` (today there's
+  exactly **one** of each — a single global game). See discussion in chat;
+  moderate refactor. Decide: fully independent games (own questions + people +
+  leaderboard) vs. shared questions; archive old games read-only?
 
 ---
 
 ## Session log
+
+### 2026-06-23 — Edit your submission (needs DB migration)
+- **People can now edit an entry they already submitted.** On `/submit`, a return
+  visit on the **same device** auto-loads their entry into an "✏️ Editing your
+  entry" form (prefilled name + clues; saved photos shown, reused unless
+  replaced) with a **Save changes** button and a "Start a new entry instead"
+  escape hatch. From a **different device**, an "Already submitted? Edit your
+  entry" link looks the entry up **by name** (exact, case-insensitive; if 2+
+  share a name it defers to the organizer).
+- **How identity works (no logins):** on submit we store the new submission id in
+  the browser (`ahg.mySubmissionId`); the name-lookup fallback re-remembers it on
+  that device. Chose "remember on device + name fallback" over admin-only.
+- **Editing is intentionally blocked while submissions are closed** (the 🔒
+  screen covers edits too), so clues can't change mid-game. Easy to relax later.
+- Code: `updateSubmission`/`getSubmission`/`findSubmissionsByName` + device-id
+  helpers in `submissions.ts` (`addSubmission` now returns the new id); edit mode
+  in `src/app/submit/page.tsx`; new `"edit submissions"` UPDATE policy in
+  `supabase-setup.sql`.
+- **DB migration required** — see "Action needed" above. Verified: `tsc --noEmit`
+  clean, `next build` succeeds.
+
+### 2026-06-23 — Game-day safeguards (no DB migration)
+- **"Submissions open/closed" toggle in `/admin`.** New `submissionsOpen` flag on
+  `AppConfig` (lives in the existing `app_config` JSON — no schema change). When
+  closed, `/submit` shows a "Submissions are closed 🔒" screen and the submit
+  handler refuses to post. Toggle saves instantly. Use it to **lock the player
+  list before starting the game** (late submissions otherwise desync `/play` and
+  `/vote`, which load their lists once on mount).
+- **Duplicate-name warning in `/admin`.** Detects names shared by 2+ submissions
+  (case-insensitive): an amber banner up top + a "⚠️ duplicate name" badge on each
+  affected card. Duplicates are ambiguous to guess and skew the scoreboard, so the
+  organizer can rename (e.g. add a last initial) before play.
+- Verified: `tsc --noEmit` clean, `next build` succeeds. No Supabase changes.
 
 ### 2026-06-23 — Winners finale (end-of-game page)
 - **New end-of-game winner page.** After the last mystery is revealed, `/play`

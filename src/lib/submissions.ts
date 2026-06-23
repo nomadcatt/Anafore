@@ -90,6 +90,39 @@ function writeDemo(sub: Submission) {
   window.localStorage.setItem(DEMO_KEY, JSON.stringify(stored));
 }
 
+function updateDemo(id: string, name: string, clues: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  const raw = window.localStorage.getItem(DEMO_KEY);
+  const stored = raw ? (JSON.parse(raw) as Submission[]) : [];
+  const idx = stored.findIndex((s) => s.id === id);
+  if (idx >= 0) {
+    stored[idx] = { ...stored[idx], name, clues };
+    window.localStorage.setItem(DEMO_KEY, JSON.stringify(stored));
+  }
+}
+
+// ─── Remembering "your" submission on this device ───────────────────────────
+// There are no logins, so after someone submits we store their submission id in
+// this browser. On a return visit /submit offers to edit that entry. People who
+// lost it (new phone / cleared browser) can re-find it by name instead.
+
+const MY_SUB_KEY = "ahg.mySubmissionId";
+
+export function getMySubmissionId(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(MY_SUB_KEY);
+}
+
+export function setMySubmissionId(id: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(MY_SUB_KEY, id);
+}
+
+export function clearMySubmissionId() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(MY_SUB_KEY);
+}
+
 // ─── Public API (works in both demo and Supabase mode) ──────────────────────
 
 /** Uploads a photo and returns a public URL to it. */
@@ -108,24 +141,92 @@ export async function uploadPhoto(file: File): Promise<string> {
   return data.publicUrl;
 }
 
-/** Saves one person's submission. */
+/** Saves one person's submission and returns its new id. */
 export async function addSubmission(
+  name: string,
+  clues: Record<string, string>
+): Promise<string> {
+  if (!isSupabaseConfigured || !supabase) {
+    const id = crypto.randomUUID();
+    writeDemo({ id, name, createdAt: new Date().toISOString(), clues });
+    return id;
+  }
+  const { data, error } = await supabase
+    .from(SUBMISSIONS_TABLE)
+    .insert({ name, clues })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Could not save submission: ${error.message}`);
+  return String(data.id);
+}
+
+/** Overwrites an existing submission's name + clues (the edit flow). */
+export async function updateSubmission(
+  id: string,
   name: string,
   clues: Record<string, string>
 ): Promise<void> {
   if (!isSupabaseConfigured || !supabase) {
-    writeDemo({
-      id: crypto.randomUUID(),
-      name,
-      createdAt: new Date().toISOString(),
-      clues,
-    });
+    updateDemo(id, name, clues);
     return;
   }
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from(SUBMISSIONS_TABLE)
-    .insert({ name, clues });
-  if (error) throw new Error(`Could not save submission: ${error.message}`);
+    .update({ name, clues })
+    .eq("id", id)
+    .select("id");
+  if (error) throw new Error(`Could not save your changes: ${error.message}`);
+  if (!data || data.length === 0) {
+    // Row level security on with no update policy silently updates nothing.
+    throw new Error(
+      "Couldn't save your changes — the database is missing an update policy. Run the snippet in supabase-setup.sql (the \"edit submissions\" policy) to enable editing."
+    );
+  }
+}
+
+/** Returns one full submission by id (used to prefill the edit form). */
+export async function getSubmission(id: string): Promise<Submission | null> {
+  if (!id) return null;
+  if (!isSupabaseConfigured || !supabase) {
+    return readDemo().find((s) => s.id === id) ?? null;
+  }
+  const { data, error } = await supabase
+    .from(SUBMISSIONS_TABLE)
+    .select("id, name, clues, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    id: String(data.id),
+    name: data.name as string,
+    createdAt: data.created_at as string,
+    clues: (data.clues ?? {}) as Record<string, string>,
+  };
+}
+
+/**
+ * Finds submissions whose name matches (case-insensitive, exact). Used by the
+ * "find my entry" fallback for people editing from a different device.
+ */
+export async function findSubmissionsByName(
+  name: string
+): Promise<Submission[]> {
+  const q = name.trim();
+  if (!q) return [];
+  if (!isSupabaseConfigured || !supabase) {
+    return readDemo().filter((s) => s.name.toLowerCase() === q.toLowerCase());
+  }
+  const { data, error } = await supabase
+    .from(SUBMISSIONS_TABLE)
+    .select("id, name, clues, created_at")
+    .ilike("name", q); // no wildcards = exact match, case-insensitive
+  if (error) return [];
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    name: row.name as string,
+    createdAt: row.created_at as string,
+    clues: (row.clues ?? {}) as Record<string, string>,
+  }));
 }
 
 /** Returns all submissions (newest last). */

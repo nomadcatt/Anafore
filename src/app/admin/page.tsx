@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useConfig } from "@/lib/config";
+import { saveConfig, useConfig } from "@/lib/config";
 import {
   clearSubmissions,
   getSubmissions,
@@ -23,6 +23,13 @@ export default function AdminPage() {
   const [resetting, setResetting] = useState(false);
   const [clearingVotes, setClearingVotes] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  // Local mirror of the submissions-open flag so the toggle reflects instantly.
+  const [open, setOpen] = useState<boolean | null>(null);
+  const [togglingOpen, setTogglingOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(cfg.submissionsOpen);
+  }, [cfg.submissionsOpen]);
 
   function load() {
     getSubmissions()
@@ -69,6 +76,34 @@ export default function AdminPage() {
       setClearingVotes(false);
     }
   }
+
+  async function toggleSubmissions() {
+    const next = !open;
+    setTogglingOpen(true);
+    setError("");
+    setOpen(next); // optimistic
+    try {
+      await saveConfig({ ...cfg, submissionsOpen: next });
+    } catch (e) {
+      setOpen(!next); // roll back
+      setError(e instanceof Error ? e.message : "Could not update submissions.");
+    } finally {
+      setTogglingOpen(false);
+    }
+  }
+
+  // Flag any name shared by two or more submissions (case-insensitive) — these
+  // are ambiguous to guess and to score, so the organizer should fix them.
+  const nameCounts = new Map<string, number>();
+  for (const s of subs ?? []) {
+    const k = s.name.trim().toLowerCase();
+    nameCounts.set(k, (nameCounts.get(k) ?? 0) + 1);
+  }
+  const duplicateNames = new Set(
+    [...nameCounts.entries()].filter(([, n]) => n > 1).map(([k]) => k)
+  );
+  const isDuplicate = (name: string) =>
+    duplicateNames.has(name.trim().toLowerCase());
 
   if (!unlocked) {
     return (
@@ -129,16 +164,63 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* Submissions open/closed — lock the form once the game starts */}
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-border bg-brand-surface p-5">
+        <div>
+          <div className="flex items-center gap-2 text-lg font-bold">
+            <span>{open ? "🟢" : "🔒"}</span>
+            <span>Submissions are {open ? "open" : "closed"}</span>
+          </div>
+          <p className="mt-1 text-sm text-brand-muted">
+            {open
+              ? "People can still submit. Close this before you start the game so the player list is locked."
+              : "The /submit form is locked. Reopen it if you still need more entries."}
+          </p>
+        </div>
+        <button
+          onClick={toggleSubmissions}
+          disabled={togglingOpen || open === null}
+          className={
+            "shrink-0 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:opacity-50 " +
+            (open
+              ? "bg-red-600 text-white hover:bg-red-700"
+              : "btn-primary")
+          }
+        >
+          {togglingOpen
+            ? "Saving…"
+            : open
+              ? "Close submissions"
+              : "Reopen submissions"}
+        </button>
+      </div>
+
       <div className="flex items-baseline justify-between">
         <h1 className="text-3xl font-bold">All submissions</h1>
         <span className="text-brand-muted">{subs?.length ?? 0} total</span>
       </div>
       {error && <p className="mt-4 text-red-600">{error}</p>}
 
+      {duplicateNames.size > 0 && (
+        <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          ⚠️ <strong>Duplicate names found.</strong> Two or more people share the
+          same name, so players can&apos;t tell them apart when guessing and the
+          scoreboard may be off. Tip: open a submission below and make each name
+          unique (e.g. add a last initial).
+        </p>
+      )}
+
       <div className="mt-6 space-y-4">
         {subs?.map((s) => (
           <div key={s.id} className="card p-5">
-            <div className="text-lg font-bold">{s.name}</div>
+            <div className="flex items-center gap-2 text-lg font-bold">
+              {s.name}
+              {isDuplicate(s.name) && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  ⚠️ duplicate name
+                </span>
+              )}
+            </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {cfg.clues.map((clue) => {
                 const v = s.clues[clue.key] ?? "";
