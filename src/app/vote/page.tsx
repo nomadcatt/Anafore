@@ -2,29 +2,66 @@
 
 import { useEffect, useState } from "react";
 import { useConfig } from "@/lib/config";
-import { getCandidateNames, getSubmissionName } from "@/lib/submissions";
-import { castVote, getVoterId, GameState, onGameState } from "@/lib/live";
+import {
+  getCandidateNames,
+  getSubmissionName,
+  getSubmissions,
+} from "@/lib/submissions";
+import {
+  castVote,
+  getAllVotes,
+  getVoterId,
+  getVoterName,
+  setVoterName,
+  GameState,
+  onGameState,
+} from "@/lib/live";
+import { computeResults, GameResults } from "@/lib/results";
 
 export default function VotePage() {
   const cfg = useConfig();
   const [voterId, setVoterId] = useState("");
+  const [name, setName] = useState("");
+  const [nameInput, setNameInput] = useState("");
   const [names, setNames] = useState<string[]>([]);
   const [state, setState] = useState<GameState>({
     submissionId: null,
     revealed: false,
+    finished: false,
   });
   const [votedFor, setVotedFor] = useState<string | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);
+  const [results, setResults] = useState<GameResults | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     setVoterId(getVoterId());
+    setName(getVoterName());
     getCandidateNames()
       .then(setNames)
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Could not load names.")
       );
   }, []);
+
+  // At the finale, fetch the full results so this phone can show its score.
+  useEffect(() => {
+    if (!state.finished) {
+      setResults(null);
+      return;
+    }
+    let alive = true;
+    Promise.all([getSubmissions(), getAllVotes()])
+      .then(([subs, votes]) => {
+        if (alive) setResults(computeResults(subs, votes));
+      })
+      .catch(() => {
+        if (alive) setResults(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [state.finished]);
 
   // Follow the presenter: which mystery is live + whether it's revealed.
   useEffect(() => onGameState(setState), []);
@@ -50,15 +87,92 @@ export default function VotePage() {
     };
   }, [state.revealed, state.submissionId]);
 
-  async function vote(name: string) {
+  function saveName() {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setVoterName(trimmed);
+    setName(trimmed);
+  }
+
+  async function vote(guess: string) {
     if (!state.submissionId || !voterId) return;
-    setVotedFor(name); // optimistic
+    setVotedFor(guess); // optimistic
     try {
-      await castVote(state.submissionId, name, voterId);
+      await castVote(state.submissionId, guess, voterId, name);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not record your vote.");
       setVotedFor(null);
     }
+  }
+
+  // ── Game over: this phone's personal results ──
+  if (state.finished) {
+    const me = results?.leaderboard.find((e) => e.voterId === voterId) ?? null;
+    return (
+      <Shell>
+        <div className="animate-[pulse_1.4s_ease-in-out_1] text-6xl">🎉</div>
+        <h1 className="mt-3 text-3xl font-black">That&apos;s a wrap!</h1>
+        {results === null ? (
+          <p className="mt-3 text-brand-muted">Tallying the winners…</p>
+        ) : me && me.answered > 0 ? (
+          <>
+            <p className="mt-3 text-xl font-semibold">
+              You got {me.correct} of {me.answered} right.
+            </p>
+            <p className="mt-2 rounded-full bg-brand-tint px-4 py-2 text-sm font-medium text-brand-primary">
+              {me.rank === 1
+                ? "🏆 You're in 1st place!"
+                : `You placed #${me.rank} of ${results.leaderboard.length}`}
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 text-brand-muted">
+            You didn&apos;t vote this game — check the big screen for the winners!
+          </p>
+        )}
+        <p className="mt-6 text-sm text-brand-muted">
+          🏆 The winners are up on the big screen.
+        </p>
+      </Shell>
+    );
+  }
+
+  // ── Ask for the player's name (once) so we can crown winners at the end ──
+  if (!name) {
+    return (
+      <div className="mx-auto max-w-md px-5 py-10">
+        <p className="text-center text-sm font-semibold uppercase tracking-widest text-brand-accent">
+          {cfg.companyName}
+        </p>
+        <h1 className="mt-1 text-center text-2xl font-bold">What&apos;s your name?</h1>
+        <p className="mt-1 text-center text-brand-muted">
+          So we can put you on the leaderboard when the game wraps up.
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveName();
+          }}
+          className="mt-6"
+        >
+          <input
+            autoFocus
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            placeholder="Your name"
+            maxLength={40}
+            className="w-full rounded-xl border border-brand-border bg-brand-surface px-4 py-3.5 text-lg focus:border-brand-primary focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!nameInput.trim()}
+            className="btn-primary mt-3 w-full rounded-full px-5 py-3 font-semibold disabled:opacity-40"
+          >
+            Let&apos;s play →
+          </button>
+        </form>
+      </div>
+    );
   }
 
   // ── Waiting for the game to start ──
