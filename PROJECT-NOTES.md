@@ -89,6 +89,17 @@ Run via `supabase-setup.sql` / snippets:
 - **Game-day safeguards** (submissions lock + duplicate-name warning) pushed on
   branch `game-day-safeguards` — **no migration needed**; merge to `main` to ship.
 
+## ⚠️ Action needed — edit-submissions migration (2026-06-23)
+- The **edit-your-submission** feature needs an **UPDATE policy** on the
+  `submissions` table (it currently only allows insert/select/delete). Until it's
+  run, saving an edit shows a clear error. Run once in the Supabase SQL editor
+  (also in `supabase-setup.sql`, idempotent):
+  ```sql
+  drop policy if exists "edit submissions" on submissions;
+  create policy "edit submissions" on submissions
+    for update to anon using (true) with check (true);
+  ```
+
 ## 🗓️ Running the game (day-of checklist)
 1. Collect everyone's submissions (share `/submit`).
 2. In `/admin` (code `reveal`): fix any **⚠️ duplicate names**, then click
@@ -100,6 +111,13 @@ Run via `supabase-setup.sql` / snippets:
    submissions** (start over).
 
 ## 💡 Backlog / ideas (not built yet)
+- **This repo is becoming "Anafore All Hands Games"** — a hub of activities.
+  Game 1: **Guess Who** (built, live). Game 2: **The A4 Awards** (designing).
+- **The A4 Awards** (Anafore All Hands Afterparty Awards) → design doc in
+  **`A4-AWARDS.md`**. 🎨 Designing now, needed ~July 2026. Peer-voted superlative
+  awards for the "afterparty"; values carried subtly by playful category names.
+- **More all-hands games** → see **`GAME-IDEAS.md`** for the full brainstormed
+  menu (peer-recognition + value-themed games).
 - **Multiple saved games / events** (requested 2026-06-23): keep past games and
   switch between them via a sidebar/tabs. Needs a "game/event" concept threaded
   through `submissions`, `votes`, `game_state`, and `app_config` (today there's
@@ -110,6 +128,26 @@ Run via `supabase-setup.sql` / snippets:
 ---
 
 ## Session log
+
+### 2026-06-23 — Edit your submission (needs DB migration)
+- **People can now edit an entry they already submitted.** On `/submit`, a return
+  visit on the **same device** auto-loads their entry into an "✏️ Editing your
+  entry" form (prefilled name + clues; saved photos shown, reused unless
+  replaced) with a **Save changes** button and a "Start a new entry instead"
+  escape hatch. From a **different device**, an "Already submitted? Edit your
+  entry" link looks the entry up **by name** (exact, case-insensitive; if 2+
+  share a name it defers to the organizer).
+- **How identity works (no logins):** on submit we store the new submission id in
+  the browser (`ahg.mySubmissionId`); the name-lookup fallback re-remembers it on
+  that device. Chose "remember on device + name fallback" over admin-only.
+- **Editing is intentionally blocked while submissions are closed** (the 🔒
+  screen covers edits too), so clues can't change mid-game. Easy to relax later.
+- Code: `updateSubmission`/`getSubmission`/`findSubmissionsByName` + device-id
+  helpers in `submissions.ts` (`addSubmission` now returns the new id); edit mode
+  in `src/app/submit/page.tsx`; new `"edit submissions"` UPDATE policy in
+  `supabase-setup.sql`.
+- **DB migration required** — see "Action needed" above. Verified: `tsc --noEmit`
+  clean, `next build` succeeds.
 
 ### 2026-06-23 — Game-day safeguards (no DB migration)
 - **"Submissions open/closed" toggle in `/admin`.** New `submissionsOpen` flag on

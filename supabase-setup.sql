@@ -25,6 +25,11 @@ drop policy if exists "clear submissions" on submissions;
 create policy "clear submissions" on submissions
   for delete to anon using (true);
 
+-- Lets people come back and edit their own entry (the /submit edit flow).
+drop policy if exists "edit submissions" on submissions;
+create policy "edit submissions" on submissions
+  for update to anon using (true) with check (true);
+
 -- 2) Photo storage -----------------------------------------------------------
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', true)
